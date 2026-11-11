@@ -7,7 +7,7 @@ VolumeBooster adjusts audio volume in browser tabs you explicitly enable. Proces
 ## What the extension accesses
 
 - The URL of the selected tab to show its hostname and check whether the page is supported.
-- Compatible audio/video elements in the selected page to route audio through a local Web Audio gain/compression graph.
+- Compatible audio/video elements in the selected page to route audio through a local Web Audio gain/limiter graph.
 - On Chrome, Edge, and Brave only, the selected tab's audio stream when direct player processing is unavailable. The stream is played locally, not recorded or uploaded. The browser displays a capture indicator.
 
 Current tab and mute state are held in memory. If you opt into **Remember this site**, the extension saves that site's origin (scheme, hostname and port), volume and peak-protection preference in local extension storage. It saves no page paths, query strings, credentials, listening history or audio. Mute is not persisted. Private-window preferences are not saved. Forgetting a site deletes its saved record and unregisters automatic processing; optional site permission is removed when no remaining preference uses that host permission.
@@ -22,7 +22,7 @@ Chromium builds additionally use `tabCapture` for fallback tab audio and `offscr
 
 ## Stopping processing
 
-Turn off boost in the popup or close the tab. Capture mode stops its stream and closes its AudioContext. Direct mode restores a unity-gain passthrough and bypasses compression; the browser's one-time media attachment remains until the page unloads. No audio is saved.
+Turn off boost in the popup or close the tab. Capture mode stops its stream and closes its AudioContext. Direct mode restores a unity-gain passthrough and bypasses peak protection; the browser's one-time media attachment remains until the page unloads. No audio is saved.
 
 ## External services
 

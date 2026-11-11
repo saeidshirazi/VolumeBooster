@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 · November 11, 2026
+
+- Opt-in local per-site volume/protection with optional host permission, reload restoration, Stop suppression and Forget.
+- Shared stereo-linked look-ahead sample limiter, identified sample-ceiling fallback, and live output meter.
+- Compatibility guidance for native/capture/Firefox restrictions, paused output and Retry recovery.
+- Prevent automatic restoration from creating a second processor over active capture.
+- 37 unit tests, four-browser DSP/memory/recovery checks and two-minute measured playback regressions.
+- Public YouTube native-fullscreen amplification and Twitch capture amplification checked in Chrome; account/physical-device coverage remains explicit.
+
 ## 0.3.0 · November 11, 2026
 
 - Separate native Chrome, Edge, Brave, and Firefox builds.

@@ -197,6 +197,7 @@ try {
   check('Popup layout fits without horizontal overflow');
   const headless = process.env.CI === 'true' || process.argv.includes('--headless');
   assert.ok(await evaluate(`document.getElementById('enable').getBoundingClientRect().bottom <= ${headless ? '600' : 'innerHeight'}`, popupSession), 'main controls must fit within the desktop popup height');
+  assert.ok(await evaluate('document.querySelector("main").getBoundingClientRect().bottom <= 600', popupSession), 'the entire collapsed popup must fit the 600px desktop limit');
   const screenshot = await protocol('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, popupSession);
   await writeFile(path.join(resultDirectory, 'popup.png'), Buffer.from(screenshot.data, 'base64'));
   await closeNativePopups();

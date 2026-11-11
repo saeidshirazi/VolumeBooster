@@ -1,13 +1,15 @@
-# Validation · November 11, 2026 · 0.3.0
+# Validation · November 11, 2026 · 0.4.0
 
 This release contains native Chrome, Edge, Brave, and Firefox builds. Local browser results below come from isolated profiles on Windows. CI tests the Chromium-family browsers on Windows, Firefox on Linux with an explicit PulseAudio virtual output, and package validation on Linux. Minimum declared versions were not separately tested.
 
 ## Automated checks
 
-- **20 unit tests**: audio bounds, graph smoothing/routing, safe media preflight, mute state, failure and stream cleanup, bounded audio-start timeout behavior, concurrent session serialization, independent tabs, Firefox/Chromium routing and permission guards, four-browser manifests, and reproducible archive text/timestamp handling.
+- **37 unit tests**: audio bounds, graph smoothing/routing, safe media preflight, mute state, failure and stream cleanup, bounded audio-start timeout behavior, concurrent session serialization, independent tabs, Firefox/Chromium routing and permission guards, four-browser manifests, and reproducible archive text/timestamp handling.
 - **Firefox `web-ext lint`: 0 errors, 0 warnings.** The Firefox package includes a native background and no Chromium offscreen/tab-capture implementation or permissions.
 - **Production dependency audit: 0 vulnerabilities.** The extension has no third-party runtime dependency; test/build tools are dev dependencies.
 - Release verification checks each manifest, required assets, privacy declaration, browser configuration, archive inventory, store image dimensions, source exclusions, and SHA-256 hashes.
+
+Extended suites add opt-in site memory/reload/Forget, real OfflineAudioContext worklet and fallback rendering, live output meters, forced suspension and Retry. Loud DSP fixtures are rendered offline, never sent to speakers. Output sample peaks remain approximately 0.98000002 with Float32 rounding. Site-memory integration uses a test-only manifest pre-granting localhost; the normal baseline runs use the unmodified production manifest. Native optional-permission prompt placement remains a manual check.
 
 ## Browser environments
 
@@ -30,7 +32,9 @@ Raw local reports and screenshots are under `test-results/<browser>/`. CI upload
 
 ## Live services and remaining scope
 
-Earlier Chrome 0.1.0 validation boosted public YouTube audio in native video fullscreen. A 0.2.0 live retest boosted audio but encountered fullscreen focus/permission denial even before boosting. The 0.3.0 four-browser regression uses deterministic local fixtures; it does not certify every current YouTube layout, Spotify account playback, or protected media service.
+Version 0.4.0 passed public YouTube amplification and native video fullscreen in Chrome, using direct mode without capture. A public Twitch stream passed measured amplification through capture. These optional live checks depend on network/player availability. A getLayoutMap policy diagnostic with no reported source URL occurred during Twitch browsing and is retained separately; deterministic fixtures had no uncaught errors. Spotify/Netflix pages were inspected but account playback remains unverified.
+
+Chrome, Edge and Brave each passed 60 seconds of measured capture plus 60 seconds of direct playback. Firefox passed 120 seconds of direct playback. Signals were sampled every six seconds and stayed running at the expected gain. This two-minute regression does not establish overnight stability.
 
 Firefox cannot use Chromium mixed-tab capture. DRM, non-CORS sources, complex embeds, shadow-DOM-only players, a source changing origin after attachment, or other exclusive audio processors can limit compatibility. Physical shortcut delivery, Bluetooth/output-device switching, long-session behavior, OS sleep/wake, and crash recovery need additional real-world testing. Safari, mobile, other operating systems, and the declared minimum browser versions have not been certified locally.
 

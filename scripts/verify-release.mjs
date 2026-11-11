@@ -32,7 +32,10 @@ for (const target of [...Object.keys(targets), 'source', 'store-assets']) {
     assert.equal(manifest.homepage_url, 'https://github.com/saeidshirazi/VolumeBooster');
     assert.equal(manifest.host_permissions, undefined);
     assert.ok(!manifest.permissions.includes('tabs'));
-    for (const required of ['popup.html', 'popup.js', 'page-engine.js', 'browser-config.js', 'icons/128.png']) assert.ok(names.includes(required), required);
+    for (const required of ['popup.html', 'popup.js', 'page-engine.js', 'browser-config.js', 'icons/128.png', 'site-settings.js', 'restore-bridge.js', 'audio-output.js', 'limiter-worklet.js', 'limiter-core.js', 'compatibility.js']) assert.ok(names.includes(required), required);
+    assert.ok(manifest.permissions.includes('storage'));
+    assert.deepEqual(manifest.optional_host_permissions, ['http://*/*', 'https://*/*']);
+    assert.deepEqual(manifest.web_accessible_resources[0].resources, ['limiter-worklet.js', 'limiter-core.js']);
     const config = strFromU8(files['browser-config.js']);
     assert.ok(config.includes(`"target":"${target}"`));
     if (target === 'firefox') {
