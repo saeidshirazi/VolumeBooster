@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { browserTarget, extensionFolder, launchBrowser } from './chromium-target.mjs';
 import { mediaFixture, installMediaProbe } from './media-fixture.mjs';
 import { renderOutputFixture } from './output-fixture.mjs';
-import { verifyEndurance } from './endurance.mjs';
+import { verifyEndurance, enduranceSeconds } from './endurance.mjs';
 
 const results = [];
 const check = (name, details = '') => { results.push({ name, details, passed: true }); console.log(`PASS ${name}`, details); };
@@ -101,13 +101,31 @@ try {
       await evaluate('window.close()', popupId).catch(() => {});
     }
   }
+  async function openNativePopup() {
+    await closeNativePopups();
+    await page.bringToFront();
+    await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
+    const deadline = Date.now() + 15000;
+    let popupSession;
+    while (Date.now() < deadline) {
+      const all = (await cdp.send('Target.getTargets', { filter: [{}] })).targetInfos;
+      const popup = all.find(info => info.type !== 'tab' && info.url === `chrome-extension://${extensionId}/popup.html`);
+      if (popup) {
+        popupSession ||= (await cdp.send('Target.attachToTarget', { targetId: popup.targetId, flatten: false })).sessionId;
+        const ready = await evaluate(`document.readyState === 'complete' && document.getElementById('status')?.textContent !== 'Connecting…' && !document.querySelector('[data-volume="150"]').disabled`, popupSession);
+        if (ready) return popupSession;
+      }
+      await page.waitForTimeout(100);
+    }
+    throw new Error('Native popup did not become ready within 15 seconds');
+  }
   const probeScript = `(${installMediaProbe.toString()})()`;
   await evaluate(probeScript);
   // Exercise the real worker API while the captured website is still active.
   const send = (type, extra = {}) => evaluate(`chrome.runtime.sendMessage(${JSON.stringify({ target: 'worker', type, tabId, ...extra })})`);
-  const initialPopup = targetInfos.find(t => t.url === `chrome-extension://${extensionId}/popup.html`);
-  assert.ok(initialPopup, 'toolbar action opens the native popup');
-  const { sessionId: initialPopupSession } = await cdp.send('Target.attachToTarget', { targetId: initialPopup.targetId, flatten: false });
+  // Creating an offscreen document can dismiss the original action popup.
+  // Read fresh targets and await the real popup state instead of a fixed delay.
+  const initialPopupSession = await openNativePopup();
   assert.equal(await evaluate(`document.querySelector('[data-volume="150"]').disabled`, initialPopupSession), false);
   await evaluate(`document.querySelector('[data-volume="150"]').click()`, initialPopupSession);
   await new Promise(resolve => setTimeout(resolve, 700));
@@ -116,7 +134,10 @@ try {
   assert.equal(started.active, true);
   assert.equal(started.volume, 150);
   check('One preset click starts boosting at the selected volume');
-  await evaluate(`document.getElementById('reset').click()`, initialPopupSession);
+  // Browser capture indicators can dismiss the action surface when capture
+  // starts. Reopen the real action rather than retaining that stale session.
+  const resetPopupSession = await openNativePopup();
+  await evaluate(`document.getElementById('reset').click()`, resetPopupSession);
   await new Promise(resolve => setTimeout(resolve, 300));
   assert.equal((await send('state')).volume, 100);
   check('Reset restores 100% through the actual popup');
@@ -151,12 +172,7 @@ try {
   check('Fullscreen mute command silences output');
   await send('mute');
   await page.evaluate(() => document.exitFullscreen());
-  await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
-  await new Promise(resolve => setTimeout(resolve, 500));
-  const popupTargets = await cdp.send('Target.getTargets', { filter: [{}] });
-  const popupTarget = popupTargets.targetInfos.find(t => t.url === `chrome-extension://${extensionId}/popup.html`);
-  assert.ok(popupTarget, JSON.stringify(popupTargets));
-  const { sessionId: popupSession } = await cdp.send('Target.attachToTarget', { targetId: popupTarget.targetId, flatten: false });
+  const popupSession = await openNativePopup();
   await evaluate(`document.querySelector('[data-volume="200"]').click()`, popupSession);
   await new Promise(resolve => setTimeout(resolve, 300));
   assert.equal((await send('state')).volume, 200);
@@ -222,7 +238,7 @@ try {
   check('Page reload preserves capture and audio playback');
   if (process.argv.includes('--endurance')) {
     await send('volume', { volume: 200 });
-    check('Capture sustains measured 200% playback for 60 seconds', await verifyEndurance(async () => (await evaluate('window.measure()'))[0], 60));
+    check(`Capture sustains measured 200% playback for ${enduranceSeconds / 2} seconds`, await verifyEndurance(async () => (await evaluate('window.measure()'))[0], enduranceSeconds / 2));
   }
   await send('stop');
   assert.equal((await send('state')).active, false);
@@ -259,7 +275,7 @@ try {
   check('Direct player mode preserves native fullscreen and audio');
   await page.evaluate(() => document.exitFullscreen());
   if (process.argv.includes('--endurance')) {
-    check('Direct player sustains measured 200% playback for 60 seconds', await verifyEndurance(async () => (await page.evaluate(() => window.measureMedia()))[0], 60));
+    check(`Direct player sustains measured 200% playback for ${enduranceSeconds / 2} seconds`, await verifyEndurance(async () => (await page.evaluate(() => window.measureMedia()))[0], enduranceSeconds / 2));
   }
   await send('stop');
   assert.equal((await send('state')).active, false);
@@ -277,10 +293,7 @@ try {
   }
   if (memoryTest) {
     await send('start', { volume: 225 });
-    await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
-    await page.waitForTimeout(600);
-    const memoryPopup = (await cdp.send('Target.getTargets')).targetInfos.find(target => target.url === `chrome-extension://${extensionId}/popup.html`);
-    const { sessionId: memorySession } = await cdp.send('Target.attachToTarget', { targetId: memoryPopup.targetId, flatten: false });
+    const memorySession = await openNativePopup();
     await evaluate(`document.getElementById('remember').click()`, memorySession);
     for (let i = 0; i < 30 && !(await send('state')).remembered; i++) await page.waitForTimeout(100);
     assert.equal((await send('state')).remembered, true);

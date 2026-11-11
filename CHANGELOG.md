@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2 · November 11, 2026
+
+- Build Chrome, Edge, Brave and Firefox artifacts from one release version.
+- Wait for live native popup readiness and fresh targets in browser tests, fixing intermittent Edge setup failures.
+- Support bounded, configurable playback endurance checks.
+- Refresh privacy and installation documentation.
+
 ## 0.4.1 · November 11, 2026
 
 - Fix timezone-dependent ZIP timestamps; verify identical archive bytes in UTC, Toronto, Honolulu and Tokyo.

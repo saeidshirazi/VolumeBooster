@@ -17,14 +17,14 @@ Smooth volume control for quieter videos, music, and calls. Choose a preset or m
 
 ## Download and install
 
-[All release assets](https://github.com/saeidshirazi/VolumeBooster/releases/tag/v0.4.1) include the browser packages, source, design assets, and SHA-256 checksums.
+[All release assets](https://github.com/saeidshirazi/VolumeBooster/releases/tag/v0.4.2) include the browser packages, source, design assets, and SHA-256 checksums.
 
 | Browser | Download | Install |
 | --- | --- | --- |
-| Chrome 116+ | [Chrome ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.1/volumebooster-0.4.1-chrome.zip) | Extract → `chrome://extensions` → Developer mode → Load unpacked |
-| Microsoft Edge (Chromium 116+) | [Edge ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.1/volumebooster-0.4.1-edge.zip) | Extract → `edge://extensions` → Developer mode → Load unpacked |
-| Brave (Chromium 116+) | [Brave ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.1/volumebooster-0.4.1-brave.zip) | Extract → `brave://extensions` → Developer mode → Load unpacked |
-| Firefox 142+ | [Unsigned Firefox XPI](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.1/volumebooster-0.4.1-firefox-unsigned.xpi) | For testing: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on |
+| Chrome 116+ | [Chrome ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.2/volumebooster-0.4.2-chrome.zip) | Extract → `chrome://extensions` → Developer mode → Load unpacked |
+| Microsoft Edge (Chromium 116+) | [Edge ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.2/volumebooster-0.4.2-edge.zip) | Extract → `edge://extensions` → Developer mode → Load unpacked |
+| Brave (Chromium 116+) | [Brave ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.2/volumebooster-0.4.2-brave.zip) | Extract → `brave://extensions` → Developer mode → Load unpacked |
+| Firefox 142+ | [Unsigned Firefox XPI](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.2/volumebooster-0.4.2-firefox-unsigned.xpi) | For testing: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on |
 
 Select the extracted folder containing `manifest.json` for Chromium installations. Firefox also accepts the extracted `dist-firefox/manifest.json` during development. **Permanent Firefox installation requires Mozilla signing**; a temporary add-on disappears when Firefox closes. Do not disable signature checks.
 
@@ -80,7 +80,7 @@ npm run package:public
 npm run verify:release
 ```
 
-Build folders: `dist`, `dist-edge`, `dist-brave`, `dist-firefox`. Archives: `release/local/v0.4.1` or `release/public/v0.4.1`. Verified public archives are sealed against replacement. The runtime is plain JavaScript; ZIP/XPI files have `manifest.json` at the root. [Validation results](TESTING.md) · [Contributing](CONTRIBUTING.md).
+Build folders: `dist`, `dist-edge`, `dist-brave`, `dist-firefox`. Archives: `release/local/v0.4.2` or `release/public/v0.4.2`. Verified public archives are sealed against replacement. The runtime is plain JavaScript; ZIP/XPI files have `manifest.json` at the root. [Validation results](TESTING.md) · [Contributing](CONTRIBUTING.md).
 
 ## Community
 

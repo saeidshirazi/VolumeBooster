@@ -7,7 +7,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { mediaFixture, installMediaProbe } from './media-fixture.mjs';
 import { renderOutputFixture } from './output-fixture.mjs';
-import { verifyEndurance } from './endurance.mjs';
+import { verifyEndurance, enduranceSeconds } from './endurance.mjs';
 
 const { server, url } = await mediaFixture();
 const results = [], errors = [];
@@ -81,7 +81,7 @@ try {
   assert.ok(ratio > 1.9 && ratio < 2.1, JSON.stringify({ baseline, boosted, ratio }));
   pass('Firefox 200% doubles the measured audio signal', { ratio });
   if (process.argv.includes('--endurance')) {
-    pass('Firefox direct player sustains measured 200% playback for 120 seconds', await verifyEndurance(() => driver.executeScript(() => window.measureMedia()[0])));
+    pass(`Firefox direct player sustains measured 200% playback for ${enduranceSeconds} seconds`, await verifyEndurance(() => driver.executeScript(() => window.measureMedia()[0]), enduranceSeconds));
   }
   await click('#fullscreen');
   await driver.wait(() => driver.executeScript(() => !!document.fullscreenElement), 10000);

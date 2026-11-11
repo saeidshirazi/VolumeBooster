@@ -1,4 +1,4 @@
-# Validation · November 11, 2026 · 0.4.1
+# Validation · November 11, 2026 · 0.4.2
 
 This release contains native Chrome, Edge, Brave, and Firefox builds. Local browser results below come from isolated profiles on Windows. CI tests the Chromium-family browsers on Windows, Firefox on Linux with an explicit PulseAudio virtual output, and package validation on Linux. Minimum declared versions were not separately tested.
 
@@ -32,7 +32,7 @@ Raw local reports and screenshots are under `test-results/<browser>/`. CI upload
 
 ## Live services and remaining scope
 
-Version 0.4.1 passed public YouTube amplification and native video fullscreen in Chrome, using direct mode without capture. A public Twitch stream passed measured amplification through capture. These optional live checks depend on network/player availability. A getLayoutMap policy diagnostic with no reported source URL occurred during Twitch browsing and is retained separately; deterministic fixtures had no uncaught errors. Spotify/Netflix pages were inspected but account playback remains unverified.
+Version 0.4.2 passed public YouTube amplification and native video fullscreen in Chrome, using direct mode without capture. A public Twitch stream passed measured amplification through capture. These optional live checks depend on network/player availability. A getLayoutMap policy diagnostic with no reported source URL occurred during Twitch browsing and is retained separately; deterministic fixtures had no uncaught errors. Spotify/Netflix pages were inspected but account playback remains unverified.
 
 Chrome, Edge and Brave each passed 60 seconds of measured capture plus 60 seconds of direct playback. Firefox passed 120 seconds of direct playback. Signals were sampled every six seconds and stayed running at the expected gain. This two-minute regression does not establish overnight stability.
 

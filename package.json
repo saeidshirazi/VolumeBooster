@@ -1,6 +1,6 @@
 {
   "name": "volumebooster",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "type": "module",
   "description": "Local, open-source volume control for Chrome, Edge, Brave and Firefox",
