@@ -60,6 +60,7 @@
         }
       },
       meter() {
+        if (context.state !== 'running') return { inputPeak: 0, outputPeak: 0, rms: 0, reductionDb: 0, processor: mode, protection: enabled, audioState: context.state };
         if (context.currentTime - lastMeter > 0.5) { cached = {}; meterStarted = false; }
         lastMeter = context.currentTime;
         const incoming = sample(input), outgoing = sample(output);
@@ -67,7 +68,7 @@
           processor.port.postMessage({ type: meterStarted ? 'meter' : 'reset-meter' }); meterStarted = true;
         }
         const reductionDb = mode === 'lookahead' ? cached.reductionDb || 0 : outgoing.peak > 1e-6 ? Math.max(20 * Math.log10(Math.max(incoming.peak, 1e-9) / outgoing.peak), 0) : 0;
-        return { inputPeak: Math.max(incoming.peak, cached.inputPeak || 0), outputPeak: Math.max(outgoing.peak, cached.outputPeak || 0), rms: outgoing.rms, reductionDb: enabled ? reductionDb : 0, processor: mode, protection: enabled };
+        return { inputPeak: Math.max(incoming.peak, cached.inputPeak || 0), outputPeak: Math.max(outgoing.peak, cached.outputPeak || 0), rms: outgoing.rms, reductionDb: enabled ? reductionDb : 0, processor: mode, protection: enabled, audioState: context.state };
       },
       dispose() { nodes.forEach(node => node.disconnect()); if (mode === 'lookahead') processor.port.close(); }
     };

@@ -28,8 +28,14 @@ async function handle(message) {
   const { type, tabId } = message;
   if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Select a website tab first.');
   if (type === 'state') {
-    const state = await page('state', tabId).catch(() => null);
-    const result = state?.active ? state : idle;
+    let state = await page('state', tabId).catch(() => null);
+    if (!state) {
+      try {
+        await api.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['audio-output.js', 'page-engine.js'] });
+        state = await page('state', tabId);
+      } catch { /* Restricted pages remain inactive. */ }
+    }
+    const result = state || idle;
     await badge(tabId, result);
     return siteSettings.describe(tabId, result);
   }

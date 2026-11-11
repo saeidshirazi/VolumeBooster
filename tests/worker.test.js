@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { normalizeVolume } from '../extension/audio.js';
 import { createSiteSettings } from '../extension/site-settings.js';
 
-async function setup() {
+async function setup({ restoreSaved = false } = {}) {
   let listener, commandListener, removedListener, contexts = false, creations = 0, captures = 0;
   const sessions = new Map(), badges = new Map();
   const idle = { active: false, volume: 100, muted: false, protection: true };
@@ -28,7 +28,7 @@ async function setup() {
     commands: { onCommand: { addListener: fn => { commandListener = fn; } } }
   };
   const code = (await readFile(new URL('../extension/background.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '');
-  vm.runInNewContext(code, { chrome, normalizeVolume, createSiteSettings, console });
+  vm.runInNewContext(code, { chrome, normalizeVolume, createSiteSettings: api => ({ ...createSiteSettings(api), ...(restoreSaved ? { forSender: async () => ({ volume: 200, protection: true }) } : {}) }), console });
   const send = (type, tabId = 1, extra = {}, sender = { id: 'test' }) => new Promise(resolve => {
     const handled = listener({ target: 'worker', type, tabId, ...extra }, sender, resolve);
     if (!handled) resolve(undefined);
@@ -50,6 +50,16 @@ test('start is serialized per tab, offscreen creation is shared across tabs', as
   await env.send('stop');
   assert.equal((await env.send('state')).active, false);
   assert.equal(env.badges.get(1), '');
+});
+
+test('a remembered site never starts a second direct processor over active capture', async () => {
+  const env = await setup({ restoreSaved: true });
+  await env.send('start', 1, { volume: 250 });
+  const restored = await env.send('restore', 1, {}, { id: 'test', tab: { id: 1 }, frameId: 0, url: 'https://example.com/' });
+  assert.equal(restored.ok, true);
+  assert.equal(restored.mode, 'capture');
+  assert.equal((await env.send('state')).volume, 250);
+  assert.equal(env.counts().captures, 1);
 });
 test('rejects browser pages, foreign senders, and page-script requests', async () => {
   const env = await setup();

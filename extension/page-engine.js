@@ -3,7 +3,7 @@
 (() => {
   const key = '__volumeBoosterEngine_v1';
   if (window[key]) return;
-  let context, output, observer, volume = 100, muted = false, protection = true, active = false, autoSuppressed = false;
+  let context, output, observer, volume = 100, muted = false, protection = true, active = false, autoSuppressed = false, lastUnavailable;
   const nodes = new Map();
   async function resumeOutput() {
     let timer;
@@ -37,7 +37,12 @@
       }
     }
   }
-  function state() { return { active, volume: active ? volume : 100, muted: active && muted, protection: active ? protection : true, mode: 'page', processor: output?.mode }; }
+  function support() {
+    const media = [...document.querySelectorAll('video,audio')];
+    const compatible = media.filter(eligible).length;
+    return { players: media.length, compatible, attached: nodes.size, reason: active ? 'active' : lastUnavailable === 'in-use' && compatible ? 'in-use' : !media.length ? 'no-media' : compatible ? 'compatible' : media.every(player => player.mediaKeys) ? 'protected' : 'cross-origin' };
+  }
+  function state() { return { active, volume: active ? volume : 100, muted: active && muted, protection: active ? protection : true, mode: 'page', processor: output?.mode, audioState: context?.state, paused: autoSuppressed && !active, support: support() }; }
   window[key] = async message => {
     if (message.type === 'state') return state();
     if (message.type === 'meter') return active && output ? output.meter() : { outputPeak: 0, rms: 0, reductionDb: 0 };
@@ -46,7 +51,7 @@
       if (message.type === 'start') autoSuppressed = false;
       if (!active) {
         const candidates = [...document.querySelectorAll('video,audio')].filter(eligible);
-        if (!candidates.length) return { active: false, unavailable: true };
+        if (!candidates.length) return { ...state(), unavailable: true };
         context ||= new AudioContext({ latencyHint: 'interactive' });
         try { await resumeOutput(); }
         catch (error) {
@@ -58,7 +63,8 @@
         volume = typeof message.volume === 'number' && Number.isFinite(message.volume) ? Math.round(Math.min(400, Math.max(0, message.volume))) : 100;
         muted = false; protection = message.protection !== false;
         attach();
-        if (!nodes.size) { active = false; return { active: false, unavailable: true }; }
+        if (!nodes.size) { active = false; lastUnavailable = 'in-use'; return { ...state(), unavailable: true }; }
+        lastUnavailable = undefined;
         apply();
         observer ||= new MutationObserver(() => { if (active) attach(); });
         observer.observe(document.documentElement, { childList: true, subtree: true });

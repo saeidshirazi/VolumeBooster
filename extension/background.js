@@ -18,7 +18,14 @@ async function pageAudio(type, tabId, extra = {}) {
   return results[0]?.result;
 }
 async function pageState(tabId) {
-  try { return await pageAudio('state', tabId); } catch { return null; }
+  try {
+    let state = await pageAudio('state', tabId);
+    if (!state) {
+      await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['audio-output.js', 'page-engine.js'] });
+      state = await pageAudio('state', tabId);
+    }
+    return state;
+  } catch { return null; }
 }
 async function hasEngine() {
   if (!chrome.offscreen || !chrome.runtime.getContexts) return false;
@@ -56,7 +63,7 @@ async function handle(message) {
     const captured = await hasEngine() ? await audio('state', tabId) : idle;
     if (captured.active) return siteSettings.describe(tabId, { ...captured, mode: 'capture' });
     const local = await pageState(tabId);
-    const s = local?.active ? local : idle;
+    const s = local || idle;
     await badge(tabId, s);
     return siteSettings.describe(tabId, s);
   }
@@ -113,6 +120,7 @@ async function handle(message) {
     throw new Error('Enable VolumeBooster for this tab first.');
   }
   const s = await audio(type, tabId, { volume: message.volume, enabled: message.enabled });
+  if (type === 'stop') await pageAudio('stop', tabId).catch(() => {});
   await badge(tabId, s);
   await siteSettings.persist(tabId, s);
   return siteSettings.describe(tabId, { ...s, mode: 'capture' });
@@ -124,6 +132,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     serialized(sender.tab.id, async () => {
       const saved = await siteSettings.forSender(sender);
       if (!saved) return { active: false };
+      if (await hasEngine()) {
+        const captured = await audio('state', sender.tab.id);
+        if (captured.active) return { ...captured, mode: 'capture' };
+      }
       const state = await pageAudio('restore', sender.tab.id, { volume: saved.volume, protection: saved.protection });
       if (state) await badge(sender.tab.id, state);
       return state || { active: false };

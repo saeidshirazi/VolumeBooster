@@ -32,6 +32,12 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 #status { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; color: #64748b; }
 .dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; background: #b8c3d0; }
 .dot.active { background: #2a9975; box-shadow: 0 0 0 4px #e2f0e9; }
+.tab[data-tone=warning] #status { color: #91602a; }
+.tab[data-tone=warning] .dot.active { background: #bf8b44; box-shadow: 0 0 0 4px #f5ebdb; }
+.tab[data-tone=error] #status { color: #a14e36; }
+.hint-wrap { display: flex; align-items: flex-start; gap: 8px; }
+.hint-wrap .hint { flex: 1; }
+.retry-audio { flex-shrink: 0; margin-top: 3px; }
 .volume-panel { padding: 14px 16px 16px; border-radius: 18px; background: #fff; border: 1px solid #e4e9f1; box-shadow: 0 3px 12px #1e304505; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; }
 .panel-heading label { font-size: 9px; font-weight: 650; letter-spacing: 1.4px; color: #7a8799; }

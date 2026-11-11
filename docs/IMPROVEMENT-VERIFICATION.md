@@ -21,3 +21,11 @@ Replaced compression-only protection with a shared output graph: a 5 ms, stereo-
 The fallback's heavy saturation can alter sound/stereo balance; it is identified as a peak ceiling rather than advertised as the full linked limiter. The processor is not an intersample/true-peak or physical loudness guarantee. See AUDIO-PROCESSING.md.
 
 Stage 2 is complete.
+
+## 3. Compatibility and recovery
+
+Added actionable status for native processing, tab-capture fullscreen restrictions, fallback protection, protected pages, unsupported Firefox players, paused output and permission failures. Retry resumes the existing output session. Existing sessions remain stoppable after navigation to a protected page. Automatic site restoration cannot create a second processor over an active capture session.
+
+**Verified:** All 37 unit tests passed. Chrome, Edge, Brave and Firefox passed the full memory/limiter suite plus forced audio suspension, visible paused guidance and Retry recovery of the same session. Popup layout and existing fullscreen/Stop behavior passed. Firefox lint reported zero errors and warnings.
+
+Stage 3 is complete.

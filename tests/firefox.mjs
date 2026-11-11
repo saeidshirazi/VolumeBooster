@@ -97,6 +97,7 @@ try {
   // test-only re-import; production source and the archive stay untouched.
   await driver.executeAsyncScript((tabId, url, done) => {
     browser.tabs.query = async () => [{ id: tabId, url }];
+    window.dispatchEvent(new Event('pagehide'));
     document.body.replaceWith(document.body.cloneNode(true));
     import('./popup.js?firefox-ui-test').then(() => done(true), error => done(error.message));
   }, target, url);
@@ -111,6 +112,16 @@ try {
   assert.ok(Number.isFinite(liveMeter.outputPeak) && liveMeter.outputPeak > 0.001 && liveMeter.outputPeak <= 1, JSON.stringify(liveMeter));
   assert.ok(['lookahead', 'ceiling'].includes(liveMeter.processor));
   pass('Firefox output meter reports the running processor and signal', liveMeter);
+  if (process.argv.includes('--compatibility')) {
+    await driver.switchTo().window(mediaHandle);
+    await driver.executeAsyncScript(done => window.audioContexts[0].suspend().then(() => done(true)),);
+    await driver.switchTo().window(controller);
+    await driver.wait(() => driver.executeScript(() => !document.getElementById('retry-audio').hidden), 5000);
+    assert.match(await driver.findElement(By.id('status')).getText(), /Audio paused/);
+    await click('#retry-audio');
+    await driver.wait(async () => (await send('state')).audioState === 'running', 5000);
+    pass('Firefox paused output guidance and Retry recover the existing session');
+  }
   if (process.argv.includes('--limiter')) {
     for (const fallback of [false, true]) {
       const rendered = await driver.executeAsyncScript(`const done = arguments[arguments.length - 1]; import('./audio-output.js').then(() => (${renderOutputFixture.toString()})(arguments[0])).then(done, error => done({ error: error.message }));`, { workletURL: base + 'limiter-worklet.js', fallback });

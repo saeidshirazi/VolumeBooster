@@ -3,7 +3,7 @@ import './audio-output.js';
 const chrome = globalThis.browser || globalThis.chrome;
 
 const sessions = new Map();
-const state = s => s ? { active: true, volume: s.volume, muted: s.muted, protection: s.protection } : { active: false, volume: 100, muted: false, protection: true };
+const state = s => s ? { active: true, volume: s.volume, muted: s.muted, protection: s.protection, processor: s.graph.mode, audioState: s.context.state } : { active: false, volume: 100, muted: false, protection: true };
 
 async function stop(tabId) {
   const s = sessions.get(tabId);

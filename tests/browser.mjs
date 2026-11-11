@@ -164,6 +164,19 @@ try {
   assert.ok(Number.isFinite(liveMeter.outputPeak) && liveMeter.outputPeak > 0.001 && liveMeter.outputPeak <= 1, JSON.stringify(liveMeter));
   assert.ok(['lookahead', 'ceiling'].includes(liveMeter.processor));
   check('Output meter reports the actual running processor and signal', liveMeter);
+  assert.match(await evaluate(`document.getElementById('status').textContent`, popupSession), /Tab audio.*fullscreen limited/);
+  if (process.argv.includes('--compatibility')) {
+    await evaluate('window.audioContexts[0].suspend()');
+    for (let i = 0; i < 30; i++) {
+      if (await evaluate(`!document.getElementById('retry-audio').hidden`, popupSession)) break;
+      await page.waitForTimeout(100);
+    }
+    assert.match(await evaluate(`document.getElementById('status').textContent`, popupSession), /Audio paused/);
+    await evaluate(`document.getElementById('retry-audio').click()`, popupSession);
+    for (let i = 0; i < 30 && (await send('state')).audioState !== 'running'; i++) await page.waitForTimeout(100);
+    assert.equal((await send('state')).audioState, 'running');
+    check('Paused output shows an actionable status and Retry resumes the same session');
+  }
   await evaluate(`document.getElementById('increase').click()`, popupSession);
   await new Promise(resolve => setTimeout(resolve, 250));
   assert.equal((await send('state')).volume, 225);
