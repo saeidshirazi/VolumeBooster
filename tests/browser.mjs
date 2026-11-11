@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { browserTarget, extensionFolder, launchBrowser } from './chromium-target.mjs';
 import { mediaFixture, installMediaProbe } from './media-fixture.mjs';
 import { renderOutputFixture } from './output-fixture.mjs';
+import { verifyEndurance } from './endurance.mjs';
 
 const results = [];
 const check = (name, details = '') => { results.push({ name, details, passed: true }); console.log(`PASS ${name}`, details); };
@@ -218,6 +219,10 @@ try {
   assert.equal((await send('state')).active, true);
   assert.ok((await evaluate('window.measure()'))[0].output > 0.001);
   check('Page reload preserves capture and audio playback');
+  if (process.argv.includes('--endurance')) {
+    await send('volume', { volume: 200 });
+    check('Capture sustains measured 200% playback for 60 seconds', await verifyEndurance(async () => (await evaluate('window.measure()'))[0], 60));
+  }
   await send('stop');
   assert.equal((await send('state')).active, false);
   assert.equal((await evaluate('window.measure()'))[0].state, 'closed');
@@ -252,6 +257,9 @@ try {
   assert.ok((await page.evaluate(() => window.measureMedia()))[0].output > 0.01);
   check('Direct player mode preserves native fullscreen and audio');
   await page.evaluate(() => document.exitFullscreen());
+  if (process.argv.includes('--endurance')) {
+    check('Direct player sustains measured 200% playback for 60 seconds', await verifyEndurance(async () => (await page.evaluate(() => window.measureMedia()))[0], 60));
+  }
   await send('stop');
   assert.equal((await send('state')).active, false);
   assert.equal(await page.locator('#media').evaluate(media => media.paused), false);

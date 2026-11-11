@@ -88,6 +88,12 @@ jobs:
         run: node tests/browser.mjs --browser=${{ matrix.browser }} --headless
       - if: matrix.browser == 'firefox'
         run: npm run test:firefox
+      - name: Verify opt-in memory, DSP, recovery and sustained playback
+        if: matrix.browser != 'firefox'
+        run: node tests/browser.mjs --browser=${{ matrix.browser }} --headless --site-memory --limiter --compatibility --endurance
+      - name: Verify Firefox memory, DSP, recovery and sustained playback
+        if: matrix.browser == 'firefox'
+        run: node tests/firefox.mjs --site-memory --limiter --compatibility --endurance
       - uses: actions/upload-artifact@v4
         if: always()
         with:

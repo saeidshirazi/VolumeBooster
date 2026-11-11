@@ -29,3 +29,13 @@ Added actionable status for native processing, tab-capture fullscreen restrictio
 **Verified:** All 37 unit tests passed. Chrome, Edge, Brave and Firefox passed the full memory/limiter suite plus forced audio suspension, visible paused guidance and Retry recovery of the same session. Popup layout and existing fullscreen/Stop behavior passed. Firefox lint reported zero errors and warnings.
 
 Stage 3 is complete.
+
+## 4. Sustained playback and public-site checks
+
+Added independent signal sampling every six seconds during sustained playback. Chrome, Edge and Brave passed 60 seconds of capture plus 60 seconds of direct playback; Firefox passed 120 seconds of direct playback. Every sample remained running and within the expected quiet-signal gain range. All memory, limiter, recovery and fullscreen regressions passed afterward. CI now runs both the unmodified-manifest baseline and the extended localhost-permission fixture suite.
+
+Public YouTube playback passed in Chrome: direct mode used no capture, output amplification was measured, and native video fullscreen retained boosted playback. Public Spotify, Twitch and Netflix pages were also inspected in a fresh profile; these checks do not establish amplified playback. Spotify play controls and a public Twitch channel were attempted without personal sign-in. No authenticated Spotify/Netflix playback test or physical Bluetooth handoff was performed.
+
+**Scope:** This is a two-minute endurance regression per browser, not overnight certification. Hardware sleep/wake, Bluetooth reconnection, authenticated/DRM services and other browser/OS versions remain explicit release limitations. These external checks are pending rather than silently counted as passes. No user-account credentials or physical device were available in the isolated test profiles.
+
+The available automated stage-4 checks are complete; the external validation items remain open. Proceeding to prepare the store/release kit with those limits stated.
