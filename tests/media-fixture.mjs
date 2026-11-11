@@ -25,7 +25,9 @@ export async function mediaFixture() {
 export function installMediaProbe() {
   const Original = window.AudioContext;
   window.mediaProbes = [];
+  window.audioContexts = [];
   window.AudioContext = class extends Original {
+    constructor(...args) { super(...args); window.audioContexts.push(this); }
     createMediaElementSource(media) {
       const source = super.createMediaElementSource(media);
       const input = this.createAnalyser(); input.fftSize = 2048; source.connect(input);

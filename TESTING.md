@@ -1,10 +1,10 @@
 # Validation · November 11, 2026 · 0.3.0
 
-This release contains native Chrome, Edge, Brave, and Firefox builds. Browser results below come from isolated profiles on Windows; automated CI repeats the browser tests on fresh Windows runners and validates packages on Linux. Minimum declared versions were not separately tested.
+This release contains native Chrome, Edge, Brave, and Firefox builds. Local browser results below come from isolated profiles on Windows. CI tests the Chromium-family browsers on Windows, Firefox on Linux with an explicit PulseAudio virtual output, and package validation on Linux. Minimum declared versions were not separately tested.
 
 ## Automated checks
 
-- **18 unit tests**: audio bounds, graph smoothing/routing, safe media preflight, mute state, failure and stream cleanup, concurrent session serialization, independent tabs, Firefox/Chromium routing and permission guards, four-browser manifests, and reproducible archive text/timestamp handling.
+- **20 unit tests**: audio bounds, graph smoothing/routing, safe media preflight, mute state, failure and stream cleanup, bounded audio-start timeout behavior, concurrent session serialization, independent tabs, Firefox/Chromium routing and permission guards, four-browser manifests, and reproducible archive text/timestamp handling.
 - **Firefox `web-ext lint`: 0 errors, 0 warnings.** The Firefox package includes a native background and no Chromium offscreen/tab-capture implementation or permissions.
 - **Production dependency audit: 0 vulnerabilities.** The extension has no third-party runtime dependency; test/build tools are dev dependencies.
 - Release verification checks each manifest, required assets, privacy declaration, browser configuration, archive inventory, store image dimensions, source exclusions, and SHA-256 hashes.
@@ -23,6 +23,8 @@ Chromium-family suites check both audio modes: a Web Audio-only fixture exercise
 Firefox tests install the actual built add-on without rewriting runtime code. A real native extension action grants `activeTab`. The suite verifies direct-mode signal gain, native document fullscreen with audio, mute/unmute, actual popup presets/+/Reset, Stop preserving original playback, navigation clearing a stale session, an unsupported non-CORS player failing without muting its source, the native shortcut manager, and no extension JavaScript errors. Popup renderer controls are exercised in an extension-page test harness attached to the actual target tab; this does not establish every native Firefox popup placement/interaction.
 
 Headless Chromium tests remove Playwright's default `--mute-audio`, which otherwise silences tab capture. Layout checks verify a 390 px body, no horizontal overflow, and main controls within 600 px desktop popup bounds. Native headless popup surfaces can have browser-controlled virtual dimensions; they are not resized or treated as physical windows. These tests do not certify sound hardware or every window-manager behavior. Headed local runs also checked the popup in Chrome, Edge, and Brave.
+
+Firefox passed locally on Windows. An initial hosted Windows runner timed out during audio startup; Firefox CI uses a Linux PulseAudio null sink to provide a defined output device while measuring the real Web Audio signal. Runtime startup is bounded to five seconds and fails before attaching a media element when the output cannot start. This does not simulate physical speakers or certify every no-device configuration.
 
 Raw local reports and screenshots are under `test-results/<browser>/`. CI uploads per-browser artifacts. Test probes are installed only into isolated test processes and are excluded from runtime packages. The media fixtures use a quiet local tone; no accounts or copyrighted media files are shipped.
 

@@ -1,4 +1,4 @@
-import { createAudioGraph, normalizeVolume } from './audio.js';
+import { createAudioGraph, normalizeVolume, resumeAudio } from './audio.js';
 const chrome = globalThis.browser || globalThis.chrome;
 
 const sessions = new Map();
@@ -35,8 +35,7 @@ async function handle(message) {
       context = new AudioContext({ latencyHint: 'interactive' });
       const volume = normalizeVolume(message.volume ?? 100);
       const graph = createAudioGraph(context, stream, volume);
-      await context.resume();
-      if (context.state !== 'running') throw new Error('The browser paused the audio engine. Stop and enable again.');
+      await resumeAudio(context);
       const session = { stream, context, graph, volume, muted: false, protection: true };
       sessions.set(tabId, session);
       stream.getTracks().forEach(track => track.addEventListener('ended', () => {
@@ -47,7 +46,7 @@ async function handle(message) {
     } catch (error) {
       clearTimeout(timer);
       stream?.getTracks().forEach(track => track.stop());
-      await context?.close();
+      context?.close().catch(() => {});
       throw error;
     }
   }
@@ -60,7 +59,7 @@ async function handle(message) {
     s.graph.setProtection(s.protection);
   } else throw new Error('Unknown audio command.');
   s.graph.setVolume(s.volume, s.muted);
-  if (s.context.state === 'suspended') await s.context.resume();
+  if (s.context.state === 'suspended') await resumeAudio(s.context);
   return state(s);
 }
 

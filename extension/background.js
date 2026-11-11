@@ -12,6 +12,7 @@ async function pageAudio(type, tabId, extra = {}) {
       return typeof engine === 'function' ? engine(message) : null;
     }, args: [{ type, ...extra }]
   });
+  if (results[0]?.error) throw new Error(results[0].error.message || 'The audio processor could not start.');
   return results[0]?.result;
 }
 async function pageState(tabId) {

@@ -23,7 +23,7 @@ For Chromium browsers, extract the ZIP and load its folder in the browser's exte
 
 ## Validation
 
-18 unit tests cover audio routing and cleanup, safe player preflight, browser manifests, permissions, per-tab state, concurrency, archive reproducibility, and both background implementations. Real browser suites check actual gain measurements, fullscreen, popup controls, mute, Stop, navigation, and browser-native shortcut settings. Firefox's package validator reports zero errors and zero warnings. See TESTING.md for the tested browser versions and known limitations.
+20 unit tests cover audio routing and cleanup, safe player preflight, startup timeouts, browser manifests, permissions, per-tab state, concurrency, archive reproducibility, and both background implementations. Real browser suites check actual gain measurements, fullscreen, popup controls, mute, Stop, navigation, and browser-native shortcut settings. Firefox's package validator reports zero errors and zero warnings. See TESTING.md for the tested browser versions and known limitations.
 
 ## Store submission
 

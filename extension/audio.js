@@ -3,6 +3,17 @@ export function normalizeVolume(value) {
   return Math.round(Math.min(400, Math.max(0, value)));
 }
 
+export async function resumeAudio(context, timeout = 5000) {
+  let timer;
+  try {
+    await Promise.race([
+      context.resume(),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Audio could not start. Play the site audio, check your output device, and try again.')), timeout); })
+    ]);
+    if (context.state !== 'running') throw new Error('The browser paused audio. Play the site audio and try again.');
+  } finally { clearTimeout(timer); }
+}
+
 export function createAudioGraph(context, stream, volume = 100, protection = true) {
   const source = context.createMediaStreamSource(stream);
   const gain = context.createGain();

@@ -9,6 +9,7 @@ async function page(type, tabId, extra = {}) {
     func: async message => typeof window.__volumeBoosterEngine_v1 === 'function' ? window.__volumeBoosterEngine_v1(message) : null,
     args: [{ type, ...extra }]
   });
+  if (results[0]?.error) throw new Error(results[0].error.message || 'The audio processor could not start.');
   return results[0]?.result;
 }
 async function badge(tabId, state) {

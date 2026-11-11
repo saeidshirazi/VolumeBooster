@@ -138,7 +138,18 @@ try {
   pass('Firefox reports no extension JavaScript errors');
 } catch (error) {
   console.error(error);
-  results.push({ name: 'Firefox integration', passed: false, error: error.stack });
+  let diagnostics;
+  if (driver) {
+    await driver.setContext('content').catch(() => {});
+    const handles = await driver.getAllWindowHandles().catch(() => []);
+    for (const handle of handles) {
+      await driver.switchTo().window(handle).catch(() => {});
+      const info = await driver.executeScript(() => ({ url: location.href, focus: document.hasFocus(), visibility: document.visibilityState, activation: navigator.userActivation?.hasBeenActive, contexts: window.audioContexts?.map(c => ({ state: c.state, time: c.currentTime })), media: [...document.querySelectorAll('audio')].map(a => ({ paused: a.paused, time: a.currentTime, ready: a.readyState })) })).catch(() => null);
+      if (info?.media.length) { diagnostics = info; break; }
+    }
+  }
+  console.error('Firefox diagnostics:', diagnostics);
+  results.push({ name: 'Firefox integration', passed: false, error: error.stack, diagnostics });
   if (driver) await writeFile('test-results/firefox/failure.png', Buffer.from(await driver.takeScreenshot(), 'base64')).catch(() => {});
   process.exitCode = 1;
 } finally {

@@ -5,6 +5,16 @@
   if (window[key]) return;
   let context, observer, volume = 100, muted = false, protection = true, active = false;
   const nodes = new Map();
+  async function resumeOutput() {
+    let timer;
+    try {
+      await Promise.race([
+        context.resume(),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Audio could not start. Play the site audio, check your output device, and try again.')), 5000); })
+      ]);
+      if (context.state !== 'running') throw new Error('The browser paused audio. Play the site audio and try again.');
+    } finally { clearTimeout(timer); }
+  }
   function eligible(media) {
     if (media.mediaKeys || !media.currentSrc) return false;
     try { return new URL(media.currentSrc, location.href).origin === location.origin || media.crossOrigin !== null; }
@@ -44,8 +54,11 @@
         const candidates = [...document.querySelectorAll('video,audio')].filter(eligible);
         if (!candidates.length) return { active: false, unavailable: true };
         context ||= new AudioContext({ latencyHint: 'interactive' });
-        await context.resume();
-        if (context.state !== 'running') return { active: false, unavailable: true };
+        try { await resumeOutput(); }
+        catch (error) {
+          if (!nodes.size) { context.close().catch(() => {}); context = undefined; }
+          throw error;
+        }
         active = true; volume = 100; muted = false; protection = true;
         attach();
         if (!nodes.size) { active = false; return { active: false, unavailable: true }; }
@@ -72,7 +85,7 @@
     else if (message.type === 'protection') protection = Boolean(message.enabled);
     else throw new Error('Unknown audio command.');
     nodes.forEach(apply);
-    await context.resume();
+    await resumeOutput();
     return state();
   };
 })();

@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAudioGraph, normalizeVolume } from '../extension/audio.js';
+import { createAudioGraph, normalizeVolume, resumeAudio } from '../extension/audio.js';
+
+test('a stalled audio resume reports an actionable error instead of waiting forever', async () => {
+  await assert.rejects(resumeAudio({ state: 'suspended', resume: () => new Promise(() => {}) }, 10), /Audio could not start/);
+});
 
 test('volume is clamped, rounded, and rejects invalid messages', () => {
   assert.equal(normalizeVolume(-5), 0);

@@ -6,6 +6,7 @@
 - Firefox background, stable add-on identity, minimal permissions, and no-data-collection declaration; no unsupported Chromium API shim.
 - Browser-native shortcut settings, with Firefox's native add-on shortcut manager.
 - Four-browser audio/fullscreen/control tests, including safe Firefox rejection of non-CORS media.
+- Bound audio startup to five seconds and preserve the original player when an output cannot start.
 - Versioned browser ZIPs, unsigned Firefox XPI, complete source, store-assets ZIP, and SHA-256 verification.
 - MIT license, privacy policy, community contribution/security/conduct files, and store-submission listing/reviewer materials.
 - Store icons, screenshot composition from the tested GUI, and promotional image sizes.

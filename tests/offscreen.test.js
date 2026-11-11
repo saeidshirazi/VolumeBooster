@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { normalizeVolume } from '../extension/audio.js';
+import { normalizeVolume, resumeAudio } from '../extension/audio.js';
 
 async function setup({ failCapture = false, failResume = false } = {}) {
   let listener, ended, acquisitions = 0, trackStops = 0, closes = 0, disposals = 0;
@@ -13,9 +13,9 @@ async function setup({ failCapture = false, failResume = false } = {}) {
     async resume() { if (failResume) throw new Error('Device unavailable'); this.state = 'running'; }
     async close() { this.state = 'closed'; closes++; }
   }
-  const code = (await readFile(new URL('../extension/offscreen.js', import.meta.url), 'utf8')).replace("import { createAudioGraph, normalizeVolume } from './audio.js';", '');
+  const code = (await readFile(new URL('../extension/offscreen.js', import.meta.url), 'utf8')).replace("import { createAudioGraph, normalizeVolume, resumeAudio } from './audio.js';", '');
   vm.runInNewContext(code, {
-    AudioContext, normalizeVolume, setTimeout, clearTimeout,
+    AudioContext, normalizeVolume, resumeAudio, setTimeout, clearTimeout,
     createAudioGraph: () => ({ setVolume() {}, setProtection() {}, dispose() { disposals++; } }),
     navigator: { mediaDevices: { getUserMedia: async () => { acquisitions++; if (failCapture) throw new Error('Capture blocked'); return stream; } } },
     chrome: { runtime: { id: 'test', onMessage: { addListener: fn => { listener = fn; } }, sendMessage: async m => { notices.push(m); } } }

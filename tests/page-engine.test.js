@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-async function setup({ src = 'blob:https://example.com/media', crossOrigin = null, drm = false } = {}) {
+async function setup({ src = 'blob:https://example.com/media', crossOrigin = null, drm = false, hangResume = false } = {}) {
   const media = { currentSrc: src, crossOrigin, mediaKeys: drm ? {} : null };
   const values = [], gains = [];
   let sourceCount = 0, contexts = 0;
@@ -11,7 +11,8 @@ async function setup({ src = 'blob:https://example.com/media', crossOrigin = nul
   class AudioContext {
     state = 'running'; currentTime = 0; destination = {};
     constructor() { contexts++; }
-    async resume() {}
+    async resume() { if (hangResume) return new Promise(() => {}); }
+    async close() { this.state = 'closed'; }
     createMediaElementSource() { sourceCount++; return node(); }
     createGain() {
       const n = { ...node(), gain: { cancelScheduledValues() {}, setTargetAtTime(value) { values.push(value); } } };
@@ -22,7 +23,8 @@ async function setup({ src = 'blob:https://example.com/media', crossOrigin = nul
   const window = {};
   const code = await readFile(new URL('../extension/page-engine.js', import.meta.url), 'utf8');
   vm.runInNewContext(code, {
-    window, URL, AudioContext,
+    window, URL, AudioContext, clearTimeout,
+    setTimeout: (callback, delay) => setTimeout(callback, hangResume ? 10 : delay),
     MutationObserver: class { observe() {} disconnect() {} },
     location: { href: 'https://example.com/watch', origin: 'https://example.com' },
     document: { documentElement: {}, querySelectorAll: () => [media], addEventListener() {}, removeEventListener() {} }
@@ -35,6 +37,13 @@ test('native engine refuses unsafe cross-origin and protected media before attac
     assert.equal((await env.send('start')).unavailable, true);
     assert.deepEqual(env.counts(), { contexts: 0, sourceCount: 0 });
   }
+});
+
+test('a stalled native audio output fails before attaching or silencing the player', async () => {
+  const env = await setup({ hangResume: true });
+  await assert.rejects(env.send('start'), /Audio could not start/);
+  assert.equal(env.counts().sourceCount, 0);
+  assert.equal((await env.send('state')).active, false);
 });
 test('native engine preserves gain/mute state and Stop restores a live unity path', async () => {
   const env = await setup();

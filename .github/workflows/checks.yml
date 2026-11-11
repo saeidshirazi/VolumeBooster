@@ -39,12 +39,16 @@ jobs:
 
   browser:
     name: Native ${{ matrix.browser }}
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        browser: [chrome, edge, brave, firefox]
+        include:
+          - { browser: chrome, os: windows-latest }
+          - { browser: edge, os: windows-latest }
+          - { browser: brave, os: windows-latest }
+          - { browser: firefox, os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,7 +62,15 @@ jobs:
       - if: matrix.browser == 'chrome'
         run: npx playwright install chromium
       - if: matrix.browser == 'firefox'
-        run: npx playwright install firefox
+        run: npx playwright install --with-deps firefox
+      - name: Provide a virtual audio output for Firefox CI
+        if: matrix.browser == 'firefox'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pulseaudio
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=VolumeBoosterTest
+          pactl set-default-sink VolumeBoosterTest
       - if: matrix.browser == 'brave'
         env:
           GH_TOKEN: ${{ github.token }}
