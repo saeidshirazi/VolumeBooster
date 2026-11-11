@@ -39,3 +39,5 @@ Public YouTube playback passed in Chrome: direct mode used no capture, output am
 **Scope:** This is a two-minute endurance regression per browser, not overnight certification. Hardware sleep/wake, Bluetooth reconnection, authenticated/DRM services and other browser/OS versions remain explicit release limitations. These external checks are pending rather than silently counted as passes. No user-account credentials or physical device were available in the isolated test profiles.
 
 The available automated stage-4 checks are complete; the external validation items remain open. Proceeding to prepare the store/release kit with those limits stated.
+
+Additional stage-4 verification: the public Twitch ESLCS stream passed measured amplification in Chrome capture mode (approximately 1.47x at 150%). The final YouTube/Twitch rerun exited successfully. A getLayoutMap permission-policy diagnostic occurred while browsing Twitch with no resource URL reported; it is retained as a live-site diagnostic, not hidden or counted as an extension fixture failure. Deterministic fixtures remained free of uncaught errors. Live-site tests are optional and network/player dependent.

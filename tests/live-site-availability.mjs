@@ -11,7 +11,7 @@ try {
       const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(3000);
       if (name === 'Spotify') {
-        const track = page.locator('a[href^="/track/"]').first();
+        const track = page.locator('a[href*="/track/"]').first();
         if (await track.count()) await track.click();
         await page.getByRole('button', { name: /^Play$/ }).first().click({ timeout: 5000 }).catch(() => {});
       }
@@ -21,7 +21,7 @@ try {
       }
       await page.waitForTimeout(5000);
       const diagnostics = await page.evaluate(() => ({ title: document.title, url: location.href, media: [...document.querySelectorAll('audio,video')].map(media => ({ paused: media.paused, readyState: media.readyState, hasSource: !!media.currentSrc })), text: document.body.innerText.slice(0, 1200) }));
-      results.push({ name, status: response?.status(), playbackVerified: false, reason: 'No authenticated or selected playing media; landing-page reachability does not verify extension playback.', diagnostics });
+      results.push({ name, status: response?.status(), playbackVerified: false, reason: 'Availability probe only; amplification was not measured here. See the extension live-site suite for playback results.', diagnostics });
     } catch (error) {
       results.push({ name, playbackVerified: false, reason: error.message });
     } finally { await page.close(); }

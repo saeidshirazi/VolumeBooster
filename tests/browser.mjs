@@ -48,7 +48,7 @@ try {
   const extensionId = new URL(worker.url()).host;
   check(`${browserTarget} loads the native Manifest V3 build`, { extensionId, version: context.browser().version() });
   const errors = [];
-  context.on('weberror', error => errors.push(error.error().message));
+  context.on('weberror', error => errors.push({ message: error.error().message, source: error.location().url }));
   const page = context.pages()[0] || await context.newPage();
   const url = `http://127.0.0.1:${server.address().port}`;
   await page.goto(url);
@@ -341,6 +341,9 @@ try {
   await closeNativePopups();
   for (const extra of context.pages().filter(tab => isShortcutUrl(tab.url()))) await extra.close();
   await page.bringToFront();
+  assert.deepEqual(errors, []);
+  check('No uncaught errors in deterministic extension fixtures');
+  const fixtureErrorCount = errors.length;
   if (process.env.LIVE_SITES === '1' || process.argv.includes('--live-sites')) {
     try {
       await page.goto('https://www.youtube.com/watch?v=aqz-KE-bpKQ', { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -389,9 +392,38 @@ try {
       await page.screenshot({ path: path.join(resultDirectory, 'youtube.png') }).catch(() => {});
       results.push({ name: 'YouTube live playback', passed: false, externalSite: true, error: error.message, diagnostics });
     }
+    try {
+      await page.goto('https://www.twitch.tv/eslcs', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.locator('video').first().waitFor({ timeout: 15000 });
+      // Autoplay can already be running; clicking a toggle can pause it while
+      // the player initializes. Request play directly and tolerate replacement.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await page.locator('video').first().evaluate(v => { v.muted = false; v.volume = 0.1; return v.play(); }).catch(() => {});
+        await page.waitForTimeout(1000);
+        if (await page.locator('video').first().evaluate(v => !v.paused && v.readyState >= 2)) break;
+      }
+      await page.waitForFunction(() => document.querySelector('video')?.readyState >= 2, null, { timeout: 20000 });
+      await page.evaluate(installMediaProbe);
+      await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
+      await page.waitForTimeout(500);
+      const live = await send('start', { volume: 150 });
+      assert.equal(live.active, true, JSON.stringify(live));
+      await closeNativePopups();
+      await page.waitForTimeout(4000);
+      const signal = live.mode === 'capture' ? (await evaluate('window.measure()')).at(-1) : (await page.evaluate(() => window.measureMedia())).at(-1);
+      assert.ok(signal?.input > 0.0001 && signal.output > signal.input * 1.2, JSON.stringify({ live, signal }));
+      check('Public Twitch stream has measured boosted audio', { mode: live.mode, signal });
+      await send('stop');
+    } catch (error) {
+      console.log('TWITCH NOT VERIFIED:', error.message);
+      results.push({ name: 'Twitch live playback', passed: false, externalSite: true, error: error.message });
+    }
   }
-  assert.deepEqual(errors, []);
-  check('No uncaught browser page errors');
+  if (errors.length > fixtureErrorCount) {
+    assert.deepEqual(errors.slice(fixtureErrorCount).filter(error => error.source.startsWith(`chrome-extension://${extensionId}/`)), [], 'Extension resources must not throw during live-site checks');
+    results.push({ name: 'JavaScript diagnostics during external-site checks', externalSite: true, details: errors.slice(fixtureErrorCount) });
+    console.log('JavaScript diagnostics during external-site checks:', errors.slice(fixtureErrorCount));
+  }
 } catch (error) {
   console.error(error);
   results.push({ name: 'Browser integration', passed: false, error: error.stack });
