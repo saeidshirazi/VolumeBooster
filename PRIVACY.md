@@ -2,7 +2,7 @@
 
 Effective November 11, 2026. Maintained by Saeid Shirazi and the VolumeBooster open-source community.
 
-VolumeBooster adjusts audio volume in browser tabs you explicitly enable. Processing happens locally on your device. VolumeBooster does not collect, transmit, sell, or share personal information, browsing history, media content, or audio.
+VolumeBooster adjusts audio volume in browser tabs you explicitly enable. It handles the selected tab's site information and website audio locally on your device. No audio, site information or saved preferences are transmitted to the developer or any external service. The developer cannot access your locally processed audio or preferences, and does not sell or share them.
 
 ## What the extension accesses
 
@@ -13,6 +13,16 @@ VolumeBooster adjusts audio volume in browser tabs you explicitly enable. Proces
 Current tab and mute state are held in memory. If you opt into **Remember this site**, the extension saves that site's origin (scheme, hostname and port), volume and peak-protection preference in local extension storage. It saves no page paths, query strings, credentials, listening history or audio. Mute is not persisted. Private-window preferences are not saved. Forgetting a site deletes its saved record and unregisters automatic processing; optional site permission is removed when no remaining preference uses that host permission.
 
 The extension has no analytics, advertising, cloud service, account system, external network calls, or remote executable code. It requests no microphone or camera access. Its Chromium `getUserMedia` request consumes the selected tab's browser-issued stream identifier, not a microphone.
+
+## Local handling and retention
+
+The current tab URL is used in memory to identify the selected site and check compatibility. VolumeBooster does not request the browser history API or build a chronological record of visited pages. If you remember a site, its exact origin remains in local extension storage with the chosen level and protection preference until you forget it or remove the extension. No page paths, visit timestamps or listening history are saved.
+
+Website audio is processed in a local audio graph and played to your selected output. It is never recorded or retained as an audio file. The output meter uses temporary signal measurements; it does not store a waveform or meter history. Stopping or closing the tab ends processing as described below.
+
+## Limited use
+
+Site information, local preferences and website audio are used only to provide the volume-control features you choose. They are not used for advertising, profiling, creditworthiness, lending or unrelated purposes. No user data is sold or transferred to third parties, and the developer has no remote access to it. This use is limited to the extension's disclosed purpose.
 
 ## Permissions
 
