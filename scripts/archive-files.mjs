@@ -6,7 +6,9 @@ export function zipArchive(files) {
   const text = /\.(?:js|mjs|json|html|css|svg|md|yml|ps1)$|(?:^|\/)LICENSE$|^\.(?:gitignore|gitattributes)$/;
   return zipSync(Object.fromEntries(Object.entries(files).map(([name, bytes]) => {
     const normalized = text.test(name) ? new TextEncoder().encode(new TextDecoder().decode(bytes).replace(/\r\n/g, '\n')) : bytes;
-    return [name, [normalized, { mtime: new Date('2020-01-01T00:00:00Z') }]];
+    // ZIP stores a timezone-less DOS wall clock; fflate reads local fields.
+    // A UTC Date shifts those fields on machines outside UTC.
+    return [name, [normalized, { mtime: new Date(2020, 0, 1, 0, 0, 0) }]];
   })), { level: 6 });
 }
 

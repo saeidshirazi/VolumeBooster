@@ -1,15 +1,15 @@
 # Chrome, Edge, Brave, and Firefox
 
-VolumeBooster 0.4.0 has a separate native build for each of these desktop browsers. This is not a renamed Chrome package for Firefox: Firefox has its own background implementation, permissions, stable add-on identity, and shortcut-settings route.
+VolumeBooster 0.4.1 has a separate native build for each of these desktop browsers. This is not a renamed Chrome package for Firefox: Firefox has its own background implementation, permissions, stable add-on identity, and shortcut-settings route.
 
 ## Install
 
 | Browser | Output / download | Installation |
 | --- | --- | --- |
-| Chrome 116+ | `dist` / `volumebooster-0.4.0-chrome.zip` | Extract to a stable folder, open `chrome://extensions`, enable Developer mode, Load unpacked |
-| Edge (Chromium 116+) | `dist-edge` / `volumebooster-0.4.0-edge.zip` | Extract, open `edge://extensions`, enable Developer mode, Load unpacked |
-| Brave (Chromium 116+) | `dist-brave` / `volumebooster-0.4.0-brave.zip` | Extract, open `brave://extensions`, enable Developer mode, Load unpacked |
-| Firefox 142+ | `dist-firefox` / `volumebooster-0.4.0-firefox-unsigned.xpi` | For testing: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → choose the XPI or manifest |
+| Chrome 116+ | `dist` / `volumebooster-0.4.1-chrome.zip` | Extract to a stable folder, open `chrome://extensions`, enable Developer mode, Load unpacked |
+| Edge (Chromium 116+) | `dist-edge` / `volumebooster-0.4.1-edge.zip` | Extract, open `edge://extensions`, enable Developer mode, Load unpacked |
+| Brave (Chromium 116+) | `dist-brave` / `volumebooster-0.4.1-brave.zip` | Extract, open `brave://extensions`, enable Developer mode, Load unpacked |
+| Firefox 142+ | `dist-firefox` / `volumebooster-0.4.1-firefox-unsigned.xpi` | For testing: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → choose the XPI or manifest |
 
 **Permanent Firefox installation requires Mozilla signing.** The GitHub XPI is unsigned and a temporary add-on disappears when Firefox closes. Submit the XPI to AMO for listing/signing or obtain an unlisted signed version. Do not disable Firefox signature checks. [Mozilla signing documentation](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 

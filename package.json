@@ -1,12 +1,17 @@
 {
   "name": "volumebooster",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "Local, open-source volume control for Chrome, Edge, Brave and Firefox",
   "license": "MIT",
-  "engines": { "node": ">=22" },
-  "repository": { "type": "git", "url": "https://github.com/saeidshirazi/VolumeBooster.git" },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saeidshirazi/VolumeBooster.git"
+  },
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:browser": "node tests/browser.mjs",

@@ -1,4 +1,4 @@
-# Store submission package · 0.4.0
+# Store submission package · 0.4.1
 
 This is a submission-prepared open-source release. It has not been submitted to or approved by a browser store. Signing, publisher registration/verification, final portal declarations, and store review remain the publisher's responsibility. Never describe an unsigned XPI as permanently installable.
 
@@ -6,10 +6,10 @@ This is a submission-prepared open-source release. It has not been submitted to 
 
 | Browser | Upload | Distribution |
 | --- | --- | --- |
-| Chrome | `volumebooster-0.4.0-chrome.zip` | Chrome Web Store |
-| Edge | `volumebooster-0.4.0-edge.zip` | Microsoft Edge Add-ons |
-| Brave | `volumebooster-0.4.0-brave.zip` for local installation; Chrome ZIP for store submission | Brave installs extensions from the Chrome Web Store; there is no separate Brave store submission here |
-| Firefox | `volumebooster-0.4.0-firefox-unsigned.xpi` | Mozilla Add-ons submission/signing; temporary installation until signed |
+| Chrome | `volumebooster-0.4.1-chrome.zip` | Chrome Web Store |
+| Edge | `volumebooster-0.4.1-edge.zip` | Microsoft Edge Add-ons |
+| Brave | `volumebooster-0.4.1-brave.zip` for local installation; Chrome ZIP for store submission | Brave installs extensions from the Chrome Web Store; there is no separate Brave store submission here |
+| Firefox | `volumebooster-0.4.1-firefox-unsigned.xpi` | Mozilla Add-ons submission/signing; temporary installation until signed |
 
 The source ZIP contains build scripts and the dependency lockfile. Runtime code is unminified JavaScript, with no runtime third-party library, downloaded code, or `eval`. PNG icons are checked in, so ordinary builds do not need a browser. Use `npm ci`, `npm run package:public`, and `npm run verify:release` to reproduce a release with a new version. Existing checksummed public archives are immutable.
 
