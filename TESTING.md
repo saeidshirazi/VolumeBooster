@@ -38,4 +38,4 @@ Chrome, Edge and Brave each passed 60 seconds of measured capture plus 60 second
 
 Firefox cannot use Chromium mixed-tab capture. DRM, non-CORS sources, complex embeds, shadow-DOM-only players, a source changing origin after attachment, or other exclusive audio processors can limit compatibility. Physical shortcut delivery, Bluetooth/output-device switching, long-session behavior, OS sleep/wake, and crash recovery need additional real-world testing. Safari, mobile, other operating systems, and the declared minimum browser versions have not been certified locally.
 
-Store signing/submission/approval is not a test result. These checks establish the documented behavior in the tested environments, not universal site compatibility or a zero-bug guarantee.
+These checks establish the documented behavior in the tested environments, not universal site compatibility or a zero-bug guarantee.

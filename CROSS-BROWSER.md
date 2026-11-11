@@ -11,7 +11,7 @@ VolumeBooster 0.4.1 has a separate native build for each of these desktop browse
 | Brave (Chromium 116+) | `dist-brave` / `volumebooster-0.4.1-brave.zip` | Extract, open `brave://extensions`, enable Developer mode, Load unpacked |
 | Firefox 142+ | `dist-firefox` / `volumebooster-0.4.1-firefox-unsigned.xpi` | For testing: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → choose the XPI or manifest |
 
-**Permanent Firefox installation requires Mozilla signing.** The GitHub XPI is unsigned and a temporary add-on disappears when Firefox closes. Submit the XPI to AMO for listing/signing or obtain an unlisted signed version. Do not disable Firefox signature checks. [Mozilla signing documentation](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
+**Permanent Firefox installation requires Mozilla signing.** The GitHub XPI is unsigned and a temporary add-on disappears when Firefox closes. Do not disable Firefox signature checks. [Mozilla signing documentation](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
 
 Pin the extension, play audio, and choose a preset. Closing the popup keeps the level active. Optionally remember this site to restore compatible players after reload. Keep the extracted directory in place and use Reload to update an unpacked installation.
 
@@ -34,4 +34,4 @@ Protected/DRM, non-CORS cross-origin media, browser/internal/store pages, nested
 
 Tests use fresh profiles and generated quiet audio. Edge and Brave tests use their actual installed binaries; Brave is also checked with `navigator.brave.isBrave()`. Chrome uses Chrome for Testing. Firefox uses a native temporary add-on controlled by Selenium, including a real toolbar action for `activeTab`. Test-only probes measure the actual Web Audio input/output, rather than just checking slider text.
 
-See [TESTING.md](TESTING.md) for versions, results, and the exact limits. [Store submission files](docs/STORE-SUBMISSION.md) distinguish GitHub packages from signed/store-approved distributions.
+See [TESTING.md](TESTING.md) for versions, results, and the exact limits.

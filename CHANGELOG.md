@@ -18,7 +18,7 @@
 - Four-browser audio/fullscreen/control tests, including safe Firefox rejection of non-CORS media.
 - Bound audio startup to five seconds and preserve the original player when an output cannot start.
 - Versioned browser ZIPs, unsigned Firefox XPI, complete source, store-assets ZIP, and SHA-256 verification.
-- MIT license, privacy policy, community contribution/security/conduct files, and store-submission listing/reviewer materials.
+- MIT license, privacy policy, community contribution/security/conduct files.
 - Store icons, screenshot composition from the tested GUI, and promotional image sizes.
 - GitHub's native-browser test matrix and package validation.
 

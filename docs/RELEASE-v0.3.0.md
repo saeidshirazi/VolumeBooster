@@ -1,6 +1,6 @@
 # VolumeBooster 0.3.0 · Four-browser release
 
-Native packages for **Chrome, Microsoft Edge, Brave, and Firefox**, plus complete MIT-licensed source and store-submission assets.
+Native packages for **Chrome, Microsoft Edge, Brave, and Firefox**, plus complete MIT-licensed source and design assets.
 
 - Smooth per-tab volume from 0–400%, with one-click presets, +/−, Reset, mute, and peak softening.
 - Compatible native players keep fullscreen support.
@@ -25,8 +25,5 @@ For Chromium browsers, extract the ZIP and load its folder in the browser's exte
 
 20 unit tests cover audio routing and cleanup, safe player preflight, startup timeouts, browser manifests, permissions, per-tab state, concurrency, archive reproducibility, and both background implementations. Real browser suites check actual gain measurements, fullscreen, popup controls, mute, Stop, navigation, and browser-native shortcut settings. Firefox's package validator reports zero errors and zero warnings. See TESTING.md for the tested browser versions and known limitations.
 
-## Store submission
-
-The store-assets ZIP includes reviewed-size icons, a genuine GUI screenshot composition, promotional images, privacy policy, and listing/reviewer copy. Chrome Web Store supplies Brave distribution; Edge has its own add-ons store. Mozilla signing and all store-account registration, final declarations, submission, and review are still required. These GitHub assets are not store-approved or signed packages.
 
 Protected media, non-CORS players, complex embeds, and capture-mode fullscreen remain browser-limited. Safari/mobile are not part of this four-desktop-browser release.

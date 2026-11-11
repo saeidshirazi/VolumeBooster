@@ -10,4 +10,4 @@ Verified: 38 unit tests, four real browser suites, real offline worklet/fallback
 
 Spotify/Netflix account playback, physical Bluetooth switching, overnight sessions and minimum browser versions remain unverified. Firefox cannot process every protected/non-CORS player. Capture may limit native fullscreen. Safari/mobile are not included.
 
-Download your browser package and check SHA256SUMS.txt. Chromium ZIPs are unpacked development installs until a store listing is approved. The Firefox XPI is unsigned and for temporary testing; permanent installation requires Mozilla signing. Source, MIT license, privacy policy and store assets are included. No store submission, approval or signature is claimed by this release.
+Download your browser package and check SHA256SUMS.txt. Chromium ZIPs can be loaded as unpacked extensions. The Firefox XPI is unsigned and for temporary testing; permanent installation requires Mozilla signing. Source, MIT license, privacy policy and design assets are included.

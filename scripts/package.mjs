@@ -25,7 +25,6 @@ const source = await archiveFiles('.', (name, entry) => {
 });
 await writeFile(path.join(output, `volumebooster-${version}-source.zip`), zipArchive(source));
 const store = await archiveFiles('docs/store');
-store['STORE-SUBMISSION.md'] = new Uint8Array(await readFile('docs/STORE-SUBMISSION.md'));
 store['PRIVACY.md'] = new Uint8Array(await readFile('PRIVACY.md'));
 store['LICENSE'] = new Uint8Array(await readFile('LICENSE'));
 await writeFile(path.join(output, `volumebooster-${version}-store-assets.zip`), zipArchive(store));

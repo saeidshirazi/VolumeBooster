@@ -38,14 +38,12 @@ Public YouTube playback passed in Chrome: direct mode used no capture, output am
 
 **Scope:** This is a two-minute endurance regression per browser, not overnight certification. Hardware sleep/wake, Bluetooth reconnection, authenticated/DRM services and other browser/OS versions remain explicit release limitations. These external checks are pending rather than silently counted as passes. No user-account credentials or physical device were available in the isolated test profiles.
 
-The available automated stage-4 checks are complete; the external validation items remain open. Proceeding to prepare the store/release kit with those limits stated.
+The available automated stage-4 checks are complete; the external validation items remain open. Those limits remain explicit.
 
 Additional stage-4 verification: the public Twitch ESLCS stream passed measured amplification in Chrome capture mode (approximately 1.47x at 150%). The final YouTube/Twitch rerun exited successfully. A getLayoutMap permission-policy diagnostic occurred while browsing Twitch with no resource URL reported; it is retained as a live-site diagnostic, not hidden or counted as an extension fixture failure. Deterministic fixtures remained free of uncaught errors. Live-site tests are optional and network/player dependent.
 
-## 5. Release and store preparation
+## Release archive verification
 
-Updated the versioned browser/source/store kits, listing copy, privacy/permission declarations, reviewer instructions and current interface screenshots. A stricter native check caught footer/help scrolling at Windows display scaling; spacing was adjusted and the entire collapsed popup now fits the 600 CSS-pixel limit.
+The fixed ZIP timestamp uses a local wall clock because the ZIP format stores timezone-less fields. All 38 unit tests passed, including byte-identical archive checks in UTC, Toronto, Honolulu and Tokyo. Actual Linux CI and Windows archives were compared byte for byte.
 
-Publisher access check: opening the Chrome developer dashboard through the connected browser returned **Not allowed**. No workaround, account creation, contract acceptance or submission was attempted. Store signing/submission remains blocked on publisher browser access and authentication. GitHub release preparation continues independently. Mozilla signing remains necessary for permanent Firefox installation.
-
-Final packaging check found identical extracted files but different ZIP headers between Windows/Toronto and Linux/UTC. The ZIP library serializes local date fields, so the fixed timestamp now uses a fixed local wall clock. A new subprocess regression verifies byte-identical archives under UTC, Toronto, Honolulu and Tokyo. All 38 unit tests passed. The unpublished 0.4.0 draft is superseded by 0.4.1; sealed archives are not overwritten.
+The complete collapsed popup fits within the 600 CSS-pixel native limit. The user confirmed Chrome direct-mode playback followed output switching from WH-1000XM5 headphones to Windows speakers and back; 73 one-second signal samples remained running. Stop preserved original playback. Other devices and browser output-switching combinations remain unverified.

@@ -17,7 +17,7 @@ Smooth volume control for quieter videos, music, and calls. Choose a preset or m
 
 ## Download and install
 
-[All release assets](https://github.com/saeidshirazi/VolumeBooster/releases/tag/v0.4.1) include the browser packages, source, store assets, and SHA-256 checksums.
+[All release assets](https://github.com/saeidshirazi/VolumeBooster/releases/tag/v0.4.1) include the browser packages, source, design assets, and SHA-256 checksums.
 
 | Browser | Download | Install |
 | --- | --- | --- |
@@ -82,10 +82,6 @@ npm run verify:release
 
 Build folders: `dist`, `dist-edge`, `dist-brave`, `dist-firefox`. Archives: `release/local/v0.4.1` or `release/public/v0.4.1`. Verified public archives are sealed against replacement. The runtime is plain JavaScript; ZIP/XPI files have `manifest.json` at the root. [Validation results](TESTING.md) · [Contributing](CONTRIBUTING.md).
 
-## Store submission and community
-
-[Store submission guide](docs/STORE-SUBMISSION.md) includes listing copy, permission justifications, privacy declarations, reviewer instructions, icons, screenshots, and promotional images. [Download store assets](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.4.1/volumebooster-0.4.1-store-assets.zip).
-
-These packages are prepared for submission, **not signed or store-approved**. Publisher registration, final portal declarations, Mozilla signing, and store review are separate. Brave uses Chrome Web Store distribution; Edge and Firefox have their own stores.
+## Community
 
 [Report a bug](https://github.com/saeidshirazi/VolumeBooster/issues) · [Security](SECURITY.md) · [Community conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md).

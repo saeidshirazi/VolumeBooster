@@ -17,7 +17,8 @@ for (const target of [...Object.keys(targets), 'source', 'store-assets']) {
   assert.ok(!names.some(file => /(^|\/)(node_modules|\.git|test-results|release|dist(?:-\w+)?|\.env)(\/|$)/.test(file)));
   assert.ok(names.includes('LICENSE'));
   if (target === 'store-assets') {
-    assert.ok(names.includes('STORE-SUBMISSION.md') && names.includes('PRIVACY.md'));
+    assert.ok(names.includes('PRIVACY.md'));
+    assert.ok(!names.includes('STORE-SUBMISSION.md'));
     for (const [name, width, height] of [
       ['icon-128', 128, 128], ['edge-icon-300', 300, 300], ['screenshot-1280x800', 1280, 800], ['promo-440x280', 440, 280], ['marquee-1400x560', 1400, 560]
     ]) {
