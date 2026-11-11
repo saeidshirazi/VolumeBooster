@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible audio, player, or browser problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options: [Chrome, Edge, Brave, Firefox, Other]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Browser and VolumeBooster versions
+      placeholder: "Firefox 159, VolumeBooster 0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode shown in the popup
+      options: [Native fullscreen supported, Tab audio mode, Unsupported player, Not sure]
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps and observed behavior
+      description: Include the expected behavior and a public reproduction page or local fixture if possible.
+    validations:
+      required: true

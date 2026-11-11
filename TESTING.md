@@ -1,51 +1,35 @@
-# Validation · November 11, 2026
+# Validation · November 11, 2026 · 0.3.0
 
-Version 0.2.0 tested on Windows with Playwright 1.65.0 and Chromium / Chrome for Testing 158.0.8127.18. This is a Chrome-first development build, not a published store extension. Chrome 116 is the declared API minimum; it was not separately tested.
+This release contains native Chrome, Edge, Brave, and Firefox builds. Browser results below come from isolated profiles on Windows; automated CI repeats the browser tests on fresh Windows runners and validates packages on Linux. Minimum declared versions were not separately tested.
 
-## Automated tests
+## Automated checks
 
-`npm test`: **11 passed**.
+- **18 unit tests**: audio bounds, graph smoothing/routing, safe media preflight, mute state, failure and stream cleanup, concurrent session serialization, independent tabs, Firefox/Chromium routing and permission guards, four-browser manifests, and reproducible archive text/timestamp handling.
+- **Firefox `web-ext lint`: 0 errors, 0 warnings.** The Firefox package includes a native background and no Chromium offscreen/tab-capture implementation or permissions.
+- **Production dependency audit: 0 vulnerabilities.** The extension has no third-party runtime dependency; test/build tools are dev dependencies.
+- Release verification checks each manifest, required assets, privacy declaration, browser configuration, archive inventory, store image dimensions, source exclusions, and SHA-256 hashes.
 
-Coverage includes numeric bounds and invalid input, smooth gain changes, compressor routing, independent tab state, concurrent start serialization, singleton offscreen creation, mute/unmute state, shortcut limits, capture failure cleanup, stream-ended cleanup, unsafe cross-origin/DRM preflight, direct-mode restart without double attachment, and unity passthrough after direct-mode Stop.
+## Browser environments
 
-## Real browser tests
+| Browser | Tested version | Engine / installation |
+| --- | --- | --- |
+| Chrome for Testing | 158.0.8127.18 | Actual native MV3 package in Playwright Chromium |
+| Microsoft Edge | 157.0.4341.46 | Installed Edge executable, native Edge build |
+| Brave | Chromium 157.0.8103.50, installed Brave 1.99 | Installed Brave executable, native Brave build, `navigator.brave.isBrave()` confirmed |
+| Firefox | 159.0 | Mozilla Firefox test binary, Selenium, temporary native MV3 add-on |
 
-The isolated browser suite passed:
+Chromium-family suites check both audio modes: a Web Audio-only fixture exercises real mixed-tab capture, and a generated WAV in a native media element exercises direct processing. They verify roughly 2× amplitude at 200%, fullscreen signal continuity, mute silence, one-click preset activation, +/−, Reset, rapid slider input, popup layout, popup closure, worker stop/restart requests, capture persistence across reload, Stop, native shortcut settings, and absence of extension page errors.
 
-- Loading the extension and opening its native toolbar popup.
-- Starting capture at 150% with a single preset click in the native popup.
-- Resetting to 100% through the actual popup.
-- Capturing a quiet generated tone and routing it to the audio destination.
-- Measuring approximately 2× amplitude at 200% relative to 100%.
-- Keeping audio processing active in document fullscreen.
-- Adjusting gain and muting the actual audio signal during fullscreen.
-- Changing the real session through the popup's preset buttons.
-- Adjusting volume by 25 percentage points using +/−.
-- Preserving the latest value during rapid slider input.
-- Rendering a 390 px popup with visible primary controls and no horizontal overflow.
-- Keeping the session alive after closing the popup.
-- Maintaining capture state after a service-worker stop/restart request.
-- Keeping capture audio alive after a page reload.
-- Releasing capture tracks and closing the AudioContext on Stop.
-- No uncaught page errors.
+Firefox tests install the actual built add-on without rewriting runtime code. A real native extension action grants `activeTab`. The suite verifies direct-mode signal gain, native document fullscreen with audio, mute/unmute, actual popup presets/+/Reset, Stop preserving original playback, navigation clearing a stale session, an unsupported non-CORS player failing without muting its source, the native shortcut manager, and no extension JavaScript errors. Popup renderer controls are exercised in an extension-page test harness attached to the actual target tab; this does not establish every native Firefox popup placement/interaction.
 
-## Live YouTube test
+Headless Chromium tests remove Playwright's default `--mute-audio`, which otherwise silences tab capture. Layout checks verify a 390 px body, no horizontal overflow, and main controls within 600 px desktop popup bounds. Native headless popup surfaces can have browser-controlled virtual dimensions; they are not resized or treated as physical windows. These tests do not certify sound hardware or every window-manager behavior. Headed local runs also checked the popup in Chrome, Edge, and Brave.
 
-Tested the public Blender Foundation video `aqz-KE-bpKQ` in the isolated profile. The test confirmed fullscreen before processing, selected **direct mode**, confirmed no active tab capture, measured increased audio amplitude, then entered native video fullscreen through the Fullscreen API with an explicit test user gesture and measured boosted output during fullscreen.
+Raw local reports and screenshots are under `test-results/<browser>/`. CI uploads per-browser artifacts. Test probes are installed only into isolated test processes and are excluded from runtime packages. The media fixtures use a quiet local tone; no accounts or copyrighted media files are shipped.
 
-That complete fullscreen pass was recorded during initial 0.1.0 validation. The 0.2.0 redesign's live retest again selected direct mode, confirmed no active tab capture, and measured amplified YouTube audio. In that run, fullscreen failed both before boosting and afterward with `TypeError: not granted`. This is an unresolved focus/permission limitation in the live automation, and is not counted as a passing fullscreen retest. The deterministic local fullscreen/audio checks passed. No audio-engine changes were made for 0.2.0.
+## Live services and remaining scope
 
-The original capture-only implementation failed YouTube fullscreen. The final build uses direct audio processing for compatible media and retains capture only as fallback. Fullscreen with capture is still browser-limited; the UI identifies this mode.
+Earlier Chrome 0.1.0 validation boosted public YouTube audio in native video fullscreen. A 0.2.0 live retest boosted audio but encountered fullscreen focus/permission denial even before boosting. The 0.3.0 four-browser regression uses deterministic local fixtures; it does not certify every current YouTube layout, Spotify account playback, or protected media service.
 
-Raw test output and measurements: `test-results/browser.json`. Inspected native popup screenshot: `test-results/popup.png`. These are local development artifacts, excluded from the packaged extension.
+Firefox cannot use Chromium mixed-tab capture. DRM, non-CORS sources, complex embeds, shadow-DOM-only players, a source changing origin after attachment, or other exclusive audio processors can limit compatibility. Physical shortcut delivery, Bluetooth/output-device switching, long-session behavior, OS sleep/wake, and crash recovery need additional real-world testing. Safari, mobile, other operating systems, and the declared minimum browser versions have not been certified locally.
 
-## Remaining checks
-
-- Physical keyboard shortcut delivery on the user's OS/browser; the handlers are tested, but Playwright page key events do not exercise browser-level extension shortcuts.
-- YouTube's own fullscreen button across layouts; the final live check explicitly exercised native video fullscreen rather than relying on a potentially focus-sensitive automated toolbar click.
-- Signed-in Spotify playback and protected media.
-- Large multi-player pages, complex shadow DOM, and nested cross-origin frames (capture fallback is available).
-- Long sessions, Bluetooth/output-device changes, OS sleep/wake, and browser crash recovery.
-- Other browser versions and browser families.
-
-These checks do not establish universal website compatibility or a zero-bug guarantee.
+Store signing/submission/approval is not a test result. These checks establish the documented behavior in the tested environments, not universal site compatibility or a zero-bug guarantee.

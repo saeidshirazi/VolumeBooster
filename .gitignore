@@ -2,6 +2,11 @@ node_modules/
 test-results/
 .test-profile/
 dist/
+dist-edge/
+dist-brave/
+dist-firefox/
+release/
+work/
 .env
 .env.*
 *.log

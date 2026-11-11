@@ -4,6 +4,8 @@ import { mkdir, writeFile, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { browserTarget, extensionFolder, launchBrowser } from './chromium-target.mjs';
+import { mediaFixture, installMediaProbe } from './media-fixture.mjs';
 
 const results = [];
 const check = (name, details = '') => { results.push({ name, details, passed: true }); console.log(`PASS ${name}`, details); };
@@ -16,24 +18,29 @@ const server = createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 await mkdir('test-results', { recursive: true });
+const resultDirectory = path.join('test-results', browserTarget);
+await mkdir(resultDirectory, { recursive: true });
 const profile = await mkdtemp(path.join(tmpdir(), 'volumebooster-test-'));
-let context;
+let context, cleanup = () => {};
+let directServer;
 try {
-  const extension = path.resolve('extension');
-  context = await chromium.launchPersistentContext(profile, {
-    channel: 'chromium', headless: false,
+  const extension = extensionFolder;
+  ({ context, cleanup } = await launchBrowser(profile, {
+    headless: process.env.CI === 'true' || process.argv.includes('--headless'),
+    ignoreDefaultArgs: ['--mute-audio'],
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--enable-unsafe-extension-debugging', '--autoplay-policy=no-user-gesture-required'],
     viewport: { width: 1100, height: 800 }
-  });
+  }));
   context.setDefaultTimeout(15000);
   let worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const extensionId = new URL(worker.url()).host;
-  check('Chrome loads the Manifest V3 extension', extensionId);
+  check(`${browserTarget} loads the native Manifest V3 build`, { extensionId, version: context.browser().version() });
   const errors = [];
   context.on('weberror', error => errors.push(error.error().message));
   const page = context.pages()[0] || await context.newPage();
   const url = `http://127.0.0.1:${server.address().port}`;
   await page.goto(url);
+  if (browserTarget === 'brave') assert.equal(await page.evaluate(() => navigator.brave.isBrave()), true);
   await page.locator('#play').click();
   const cdp = await context.browser().newBrowserCDPSession();
   const targets = await cdp.send('Target.getTargets', { filter: [{}] });
@@ -182,11 +189,14 @@ try {
   check('Rapid slider input keeps the latest volume');
   await evaluate(`document.querySelector('[data-volume="200"]').click()`, popupSession);
   await new Promise(resolve => setTimeout(resolve, 250));
-  assert.equal(await evaluate('document.documentElement.scrollWidth', popupSession), 390);
+  const popupLayout = await evaluate('({ bodyWidth: document.body.getBoundingClientRect().width, scrollWidth: document.documentElement.scrollWidth, viewportWidth: innerWidth })', popupSession);
+  assert.equal(popupLayout.bodyWidth, 390);
+  assert.ok(popupLayout.scrollWidth <= popupLayout.viewportWidth, JSON.stringify(popupLayout));
   check('Popup layout fits without horizontal overflow');
-  assert.ok(await evaluate(`document.getElementById('enable').getBoundingClientRect().bottom <= innerHeight`, popupSession), 'main controls must be visible without scrolling');
+  const headless = process.env.CI === 'true' || process.argv.includes('--headless');
+  assert.ok(await evaluate(`document.getElementById('enable').getBoundingClientRect().bottom <= ${headless ? '600' : 'innerHeight'}`, popupSession), 'main controls must fit within the desktop popup height');
   const screenshot = await protocol('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, popupSession);
-  await writeFile('test-results/popup.png', Buffer.from(screenshot.data, 'base64'));
+  await writeFile(path.join(resultDirectory, 'popup.png'), Buffer.from(screenshot.data, 'base64'));
   await closeNativePopups();
   await page.bringToFront();
   await page.keyboard.press('Escape');
@@ -211,6 +221,63 @@ try {
   assert.equal((await send('state')).active, false);
   assert.equal((await evaluate('window.measure()'))[0].state, 'closed');
   check('Stop releases audio context and session');
+  const direct = await mediaFixture(); directServer = direct.server;
+  await page.goto(direct.url);
+  await page.locator('#play').click();
+  await page.evaluate(installMediaProbe);
+  await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
+  await page.waitForTimeout(500);
+  const directStarted = await send('start');
+  assert.equal(directStarted.mode, 'page', JSON.stringify(directStarted));
+  await closeNativePopups();
+  await page.bringToFront();
+  await page.waitForTimeout(400);
+  const directBaseline = (await page.evaluate(() => window.measureMedia()))[0];
+  assert.ok(directBaseline.input > 0.001 && directBaseline.output > 0.001, JSON.stringify(directBaseline));
+  await send('volume', { volume: 200 });
+  await page.waitForTimeout(350);
+  const directBoosted = (await page.evaluate(() => window.measureMedia()))[0];
+  const directRatio = (directBoosted.output / directBoosted.input) / (directBaseline.output / directBaseline.input);
+  assert.ok(directRatio > 1.9 && directRatio < 2.1, JSON.stringify({ directBaseline, directBoosted }));
+  check('Direct player mode doubles measured media audio without capture', { ratio: directRatio });
+  await page.locator('#fullscreen').click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  assert.ok((await page.evaluate(() => window.measureMedia()))[0].output > 0.01);
+  check('Direct player mode preserves native fullscreen and audio');
+  await page.evaluate(() => document.exitFullscreen());
+  await send('stop');
+  assert.equal((await send('state')).active, false);
+  assert.equal(await page.locator('#media').evaluate(media => media.paused), false);
+  check('Direct player Stop preserves original playback');
+  await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
+  let shortcutPopup;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    shortcutPopup = (await cdp.send('Target.getTargets')).targetInfos.find(target => target.url === `chrome-extension://${extensionId}/popup.html`);
+    if (shortcutPopup) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(shortcutPopup, 'native shortcut popup must finish opening');
+  const { sessionId: shortcutSession } = await cdp.send('Target.attachToTarget', { targetId: shortcutPopup.targetId, flatten: false });
+  for (let attempt = 0; attempt < 30; attempt++) {
+    if (await evaluate(`document.readyState === 'complete' && document.getElementById('status')?.textContent !== 'Connecting…'`, shortcutSession)) break;
+    await page.waitForTimeout(100);
+  }
+  await evaluate(`document.getElementById('shortcuts').click()`, shortcutSession);
+  // Brave accepts brave:// in its UI but reports the Chromium canonical URL
+  // through CDP. navigator.brave was verified above, so this is still Brave.
+  const shortcutUrls = [`${browserTarget}://extensions/shortcuts`, ...(browserTarget === 'brave' ? ['chrome://extensions/shortcuts'] : [])];
+  const isShortcutUrl = url => shortcutUrls.some(prefix => url.startsWith(prefix));
+  let settingsTargets;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    settingsTargets = (await cdp.send('Target.getTargets', { filter: [{}] })).targetInfos;
+    if (settingsTargets.some(target => isShortcutUrl(target.url))) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(settingsTargets.some(target => isShortcutUrl(target.url)), JSON.stringify(settingsTargets.map(target => ({ type: target.type, url: target.url }))));
+  check('Shortcuts opens this browser’s native extension shortcut settings');
+  await closeNativePopups();
+  for (const extra of context.pages().filter(tab => isShortcutUrl(tab.url()))) await extra.close();
+  await page.bringToFront();
   if (process.env.LIVE_SITES === '1' || process.argv.includes('--live-sites')) {
     try {
       await page.goto('https://www.youtube.com/watch?v=aqz-KE-bpKQ', { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -226,6 +293,7 @@ try {
       if (baselineFullscreen) await page.evaluate(() => document.exitFullscreen());
       await pageCdp.send('Runtime.evaluate', { expression: probeScript.replaceAll('createMediaStreamSource', 'createMediaElementSource') });
       await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
+      await page.waitForTimeout(500);
       const live = await send('start');
       assert.equal(live.active, true, JSON.stringify(live));
       assert.equal(live.mode, 'page', 'YouTube should use fullscreen-preserving direct audio');
@@ -255,7 +323,7 @@ try {
       console.log('LIVE SITE NOT VERIFIED:', error.message);
       const diagnostics = await page.evaluate(() => ({ title: document.title, fullscreenEnabled: document.fullscreenEnabled, video: [...document.querySelectorAll('video')].map(v => ({ paused: v.paused, readyState: v.readyState, currentTime: v.currentTime, error: v.error?.message })), text: document.body.innerText.slice(0, 1000) })).catch(() => ({}));
       console.log(diagnostics);
-      await page.screenshot({ path: 'test-results/youtube.png' }).catch(() => {});
+      await page.screenshot({ path: path.join(resultDirectory, 'youtube.png') }).catch(() => {});
       results.push({ name: 'YouTube live playback', passed: false, externalSite: true, error: error.message, diagnostics });
     }
   }
@@ -266,7 +334,9 @@ try {
   results.push({ name: 'Browser integration', passed: false, error: error.stack });
   process.exitCode = 1;
 } finally {
-  await writeFile('test-results/browser.json', JSON.stringify({ testedAt: new Date().toISOString(), results }, null, 2));
+  await writeFile(path.join(resultDirectory, 'browser.json'), JSON.stringify({ browser: browserTarget, testedAt: new Date().toISOString(), results }, null, 2));
   await context?.close();
+  cleanup();
   server.close();
+  directServer?.close();
 }

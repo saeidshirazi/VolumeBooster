@@ -1,88 +1,89 @@
 <p align="center"><img src="extension/icons/logo.svg" alt="VolumeBooster logo" width="88" height="88"></p>
-
 <h1 align="center">VolumeBooster</h1>
-
 <p align="center">A little louder. Just right.</p>
+<p align="center"><a href="https://github.com/saeidshirazi/VolumeBooster/actions/workflows/checks.yml"><img src="https://github.com/saeidshirazi/VolumeBooster/actions/workflows/checks.yml/badge.svg" alt="Checks"></a> · Chrome · Edge · Brave · Firefox · MIT</p>
+<p align="center"><img src="docs/store/assets/screenshot-1280x800.png" alt="VolumeBooster's actual interface with a 200% level, presets, plus and minus buttons, mute, and peak softening" width="900"></p>
 
-<p align="center"><a href="https://github.com/saeidshirazi/VolumeBooster/actions/workflows/checks.yml"><img src="https://github.com/saeidshirazi/VolumeBooster/actions/workflows/checks.yml/badge.svg" alt="Checks"></a> · Chrome 116+ · Manifest V3 · Local audio processing</p>
+Smooth volume control for quieter videos, music, and calls. Choose a preset or move the slider to start boosting the tab you're on. Each tab has its own level. **No accounts, recordings, uploads, analytics, ads, or runtime dependencies.**
 
-<p align="center"><img src="docs/assets/popup.png" alt="VolumeBooster popup with a 200 percent volume setting, quick presets, plus and minus buttons, and peak softening" width="350"></p>
+- Volume from **0–400%**, with one-click presets, +/−, and Reset.
+- Mute without losing your chosen volume.
+- Optional peak compression to soften sudden sounds.
+- Native fullscreen on compatible media players.
+- Keyboard shortcuts and the browser's own shortcut settings.
+- Four native browser packages, open source under the [MIT license](LICENSE).
 
-A Chrome extension for quieter videos, music, and calls. Choose a level and keep listening. Boost a tab from **0–400%**, use quick presets or +/−, mute instantly, and soften sudden loud peaks. All audio processing stays on your computer. No accounts, recording, uploads, analytics, remote code, or runtime dependencies.
+## Download and install
 
-- **One click to boost.** Pick a preset or move the slider; it starts automatically.
-- **Easy adjustments.** +/− changes the level by 25 points. Reset returns to 100%.
-- **Per-tab controls.** Each tab keeps its own volume and mute state.
-- **Fullscreen support.** Compatible players use direct audio processing. The popup identifies fallback mode and its fullscreen limitations.
-- **Small permission footprint.** Access only the tab you explicitly enable; no permission to read all websites.
+[All release assets](https://github.com/saeidshirazi/VolumeBooster/releases/tag/v0.3.0) include the browser packages, source, store assets, and SHA-256 checksums.
 
-## Install
+| Browser | Download | Install |
+| --- | --- | --- |
+| Chrome 116+ | [Chrome ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.3.0/volumebooster-0.3.0-chrome.zip) | Extract → `chrome://extensions` → Developer mode → Load unpacked |
+| Microsoft Edge (Chromium 116+) | [Edge ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.3.0/volumebooster-0.3.0-edge.zip) | Extract → `edge://extensions` → Developer mode → Load unpacked |
+| Brave (Chromium 116+) | [Brave ZIP](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.3.0/volumebooster-0.3.0-brave.zip) | Extract → `brave://extensions` → Developer mode → Load unpacked |
+| Firefox 142+ | [Unsigned Firefox XPI](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.3.0/volumebooster-0.3.0-firefox-unsigned.xpi) | For testing: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on |
 
-1. Download this repository using **Code → Download ZIP** and extract it, or clone it.
-2. Open `chrome://extensions` in Chrome.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the repository's **extension** folder.
-5. Pin VolumeBooster from Chrome's Extensions menu.
-6. Play audio on a website, open VolumeBooster, and choose a preset or move the slider.
+Select the extracted folder containing `manifest.json` for Chromium installations. Firefox also accepts the extracted `dist-firefox/manifest.json` during development. **Permanent Firefox installation requires Mozilla signing**; a temporary add-on disappears when Firefox closes. Do not disable signature checks.
 
-Each tab is independent. **Turn on boost** starts at 100%; choosing a preset or slider level starts directly at that level. Closing the popup keeps boosting active. **Turn off boost** restores the original audio path/level. Start gently and lower the level if you hear distortion.
+Pin VolumeBooster, play audio, open its popup, and choose 150% or 200%. Increase gradually. Closing the popup keeps processing active; **Turn off boost** restores original playback. Re-enable direct mode after a reload. [Full browser installation guide](CROSS-BROWSER.md).
 
-This is a development extension, not a Chrome Web Store listing. GitHub Actions builds an installable ZIP under the latest successful run's **Artifacts**. Extract it before choosing Load unpacked.
+## Fullscreen and compatibility
 
-## Fullscreen and the two audio modes
+Compatible HTML audio/video players use **direct processing**, preserving native fullscreen. Chrome, Edge, and Brave also have **tab audio capture** as a fallback for other sources. Those browsers may restrict fullscreen during capture; the popup identifies the mode and suggests F11. **Firefox has no Chromium tab-capture API**: incompatible protected/non-CORS players get a clear error, and their original playback remains intact.
 
-**Direct mode** processes compatible HTML audio/video players through Web Audio, keeping native fullscreen available. Tested with public YouTube playback and native video fullscreen. Direct mode checks media origin, explicit CORS configuration, and DRM status before attaching a source; it does not change player URLs or cross-origin settings. It observes newly added media elements for single-page navigation. After a full page reload or navigation, open the popup and enable it again.
+This cannot boost every site or bypass DRM, cross-origin policies, muted devices, browser-internal pages, or another audio extension's exclusive attachment. Cross-origin embeds and shadow-DOM-only players may need Chromium capture. Safari and mobile are not part of this four-desktop-browser release. See the [browser feature matrix](CROSS-BROWSER.md).
 
-**Capture mode** handles other sources, including players without an accessible compatible media element. It processes the tab's mixed audio in an offscreen document. Chrome can restrict native fullscreen while a tab is captured; the popup clearly identifies capture mode. Some sites may require browser fullscreen (F11) instead. Capture mode persists across ordinary reloads and navigation within the tab.
+Both engines smooth gain changes with a 25 ms time constant. Peak softening changes dynamics and can slightly affect levels at 100%; turn it off for an uncompressed unity-gain path. It is not a hard limiter and cannot guarantee distortion-free sound. Lower the level if audio crackles.
 
-Enable the extension before entering fullscreen. Use these shortcuts once a tab is enabled:
+In direct mode, Stop restores a unity-gain path with compression bypassed. The browser's one-time media attachment remains alive until the page unloads so the site stays audible. Capture-mode Stop releases its stream and AudioContext completely.
+
+## Keyboard controls
 
 | Shortcut | Action |
 | --- | --- |
 | Alt + Shift + V | Open VolumeBooster |
-| Alt + Shift + Up | Increase by 10 percentage points |
-| Alt + Shift + Down | Decrease by 10 percentage points |
-| Alt + Shift + M | Mute/unmute |
+| Alt + Shift + Up / Down | Adjust this enabled tab by 10 percentage points |
+| Alt + Shift + M | Mute/unmute this enabled tab |
 
-Customize conflicting assignments at `chrome://extensions/shortcuts`. Operating systems and browsers may reserve keys. Shortcut command handling is covered by unit tests; physical shortcut delivery still needs a manual check on your setup.
+Use **Shortcuts** in the popup to change conflicts in your browser's native settings. Operating systems may reserve keys. Physical shortcut delivery depends on your setup; the handlers and settings routes are tested.
 
-## Audio and compatibility
+## Privacy and permissions
 
-Both engines use a gain node with a 25 ms smoothing time constant, followed by an optional peak compressor. Peak softening is enabled initially. It changes dynamics and can slightly affect levels even at 100%; turn it off for an uncompressed unity-gain path. It is not a hard limiter and cannot guarantee distortion-free audio or repair an already clipped recording.
+All processing is local. No microphone/camera capture, saved audio, external service, broad host permission, or browser history collection. Chromium builds request `activeTab`, `scripting`, `tabCapture`, and `offscreen`. Firefox requests only `activeTab` and `scripting`, with Mozilla's no-data-collection declaration. [Privacy policy](PRIVACY.md).
 
-Browser internal pages cannot be boosted. Protected media, browser policies, existing player audio processing, or another capture extension can limit compatibility. Site players and your device must be unmuted and have nonzero volume. Cross-origin embedded players and shadow-DOM players currently use capture fallback when no compatible top-level element is available. Dynamic changes from a safe media source to a non-CORS cross-origin source on the same attached element may require a page reload.
+## Build and test
 
-In direct mode, Stop resets the graph to unity gain with compression bypassed. Web Audio's media-source attachment is one-time, so the passthrough AudioContext remains alive until the page unloads. Capture mode Stop releases the stream and AudioContext completely. Closing a tab releases its resources.
+Node 22+:
 
-YouTube audio boosting and native video fullscreen passed initial live validation. Fullscreen automation is focus-sensitive: the redesign's live retest boosted YouTube audio successfully, but fullscreen was denied before and after enabling the extension. See [TESTING.md](TESTING.md) for the exact scope. Spotify account playback, DRM behavior, long listening sessions, and Edge/Brave have not been validated. Firefox and Safari need separate implementations. This release targets Chrome 116+, tested in Chromium/Chrome for Testing 158.
-
-## Permissions and privacy
-
-- `activeTab`: temporary access to the tab you explicitly enable.
-- `scripting`: attach the direct audio engine to that selected tab.
-- `tabCapture`: fallback processing for the selected tab's mixed audio.
-- `offscreen`: keep fallback audio playing after the popup closes.
-
-There are no broad host permissions, background site scanning, storage permissions, or external network requests from the extension. Chrome shows its own capture indicator in capture mode.
-
-## Development
-
-```
-npm install
-npx playwright install chromium
+```sh
+npm ci
+npm run build:all
 npm test
-npm run test:browser
+npx playwright install chromium firefox
+node tests/browser.mjs --browser=chrome
+node tests/browser.mjs --browser=edge
+node tests/browser.mjs --browser=brave
+npm run test:firefox
+npm run lint:firefox
+```
+
+Edge and Brave tests use their installed native browsers; Firefox uses Selenium with a temporary native add-on. Fresh profiles and generated audio keep personal sessions untouched. Test-only Web Audio probes measure real signal gain and mute behavior. `--headless` runs Chromium suites in CI mode with audio unmuted; layout checks verify a 390 px body and controls within desktop popup bounds. `--live-sites` optionally adds public YouTube playback checks; live fullscreen is focus/network-sensitive.
+
+```sh
 npm run package
+node scripts/verify-release.mjs
+# For a new public release after final verification:
+npm run package:public
+npm run verify:release
 ```
 
-To include the optional public YouTube check:
+Build folders: `dist`, `dist-edge`, `dist-brave`, `dist-firefox`. Archives: `release/local/v0.3.0` or `release/public/v0.3.0`. Verified public archives are sealed against replacement. The runtime is plain JavaScript; ZIP/XPI files have `manifest.json` at the root. [Validation results](TESTING.md) · [Contributing](CONTRIBUTING.md).
 
-```
-npm run test:browser -- --live-sites
-```
+## Store submission and community
 
-Tests use an isolated browser profile, generated quiet audio, real extension capture, the native toolbar popup, audio signal measurements, fullscreen transitions, reloads, and worker lifecycle checks. Runtime files are not modified by tests. Audio probes are installed only into the isolated test process. Live-site checks report external failures separately in `test-results/browser.json`; inspect that report even if the deterministic suite exits successfully.
+[Store submission guide](docs/STORE-SUBMISSION.md) includes listing copy, permission justifications, privacy declarations, reviewer instructions, icons, screenshots, and promotional images. [Download store assets](https://github.com/saeidshirazi/VolumeBooster/releases/download/v0.3.0/volumebooster-0.3.0-store-assets.zip).
 
-The package command produces `dist/VolumeBooster-Chrome.zip` with only extension runtime files. Extract the ZIP before using Load unpacked. Chrome Web Store publication is a separate step. To regenerate the PNG icons from the editable SVG logo, run `npm run icons` after installing the test browser.
+These packages are prepared for submission, **not signed or store-approved**. Publisher registration, final portal declarations, Mozilla signing, and store review are separate. Brave uses Chrome Web Store distribution; Edge and Firefox have their own stores.
 
-See [TESTING.md](TESTING.md) for validation scope. Architecture follows Chrome's [tab capture](https://developer.chrome.com/docs/extensions/reference/api/tabCapture), [offscreen processing](https://developer.chrome.com/docs/extensions/how-to/web-platform/screen-capture), and [on-demand script injection](https://developer.chrome.com/docs/extensions/reference/api/scripting) APIs.
+[Report a bug](https://github.com/saeidshirazi/VolumeBooster/issues) · [Security](SECURITY.md) · [Community conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md).

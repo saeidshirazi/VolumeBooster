@@ -1,4 +1,6 @@
 import { normalizeVolume } from './audio.js';
+import { browserConfig } from './browser-config.js';
+const chrome = globalThis.browser || globalThis.chrome;
 
 const $ = id => document.getElementById(id);
 let tabId, supported = false, state, busy = false, busyLabel = '', queuedVolume, sendingVolume = false;
@@ -27,7 +29,7 @@ function render(s) {
   $('status').textContent = !supported ? 'Open a regular website to boost audio' : s.active ? (s.muted ? 'Muted · your volume is saved' : s.mode === 'page' ? 'Boosting · native fullscreen supported' : 'Boosting · tab audio mode') : 'Choose a level to start boosting';
   $('mode').textContent = s.active ? (s.mode === 'page' ? 'Native fullscreen supported' : 'Fullscreen limited · try F11') : 'Only this tab. Always local.';
   $('level').textContent = s.muted ? 'Muted' : s.volume === 100 ? 'Original level' : s.volume === 0 ? 'Silent' : s.volume > 100 ? `${(s.volume / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}× volume` : 'A little quieter';
-  $('hint').textContent = !supported ? 'Chrome pages and the Web Store cannot be boosted.' : s.volume > 200 ? 'High boost can distort. Lower the level if audio crackles.' : s.active ? 'Your level stays on when you close this popup.' : 'Choose a preset or move the slider to start.';
+  $('hint').textContent = !supported ? 'Browser pages and extension stores cannot be boosted.' : s.volume > 200 ? 'High boost can distort. Lower the level if audio crackles.' : s.active ? 'Your level stays on when you close this popup.' : 'Choose a preset or move the slider to start.';
   $('hint').classList.toggle('warning', supported && s.volume > 200);
   document.querySelectorAll('[data-volume]').forEach(button => {
     button.disabled = disabled;
@@ -82,7 +84,8 @@ $('protection').addEventListener('change', () => action('protection', { enabled:
 $('volume').addEventListener('input', event => setVolume(+event.target.value));
 document.querySelectorAll('[data-volume]').forEach(button => button.addEventListener('click', () => setVolume(+button.dataset.volume)));
 $('shortcuts').addEventListener('click', () => {
-  chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }).catch(showError);
+  const opened = chrome.commands.openShortcutSettings ? chrome.commands.openShortcutSettings() : chrome.tabs.create({ url: browserConfig.shortcuts });
+  Promise.resolve(opened).catch(showError);
 });
 
 try {
@@ -90,6 +93,7 @@ try {
   tabId = tab?.id;
   supported = /^https?:\/\//.test(tab?.url || '');
   const hostname = supported ? new URL(tab.url).hostname.replace(/^www\./, '') : '';
+  document.documentElement.dataset.browser = browserConfig.target;
   $('site').textContent = hostname || 'Open a website to get started';
   $('site-icon').textContent = hostname.charAt(0) || '↗';
   render(await send('state'));

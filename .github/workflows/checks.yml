@@ -4,36 +4,80 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    name: Unit tests (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm audit --omit=dev
       - run: npm test
-
-  package:
-    name: Package Chrome extension
-    needs: test
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Package runtime files
-        shell: pwsh
-        run: ./scripts/package.ps1
+      - run: npm run build:all
+      - run: npm run lint:firefox
+      - run: npm run package
+      - run: node scripts/verify-release.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: VolumeBooster-Chrome
-          path: dist/VolumeBooster-Chrome.zip
+          name: VolumeBooster-all-browsers
+          path: release/local/v*/*
+
+  browser:
+    name: Native ${{ matrix.browser }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, edge, brave, firefox]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:all
+      - if: matrix.browser == 'chrome'
+        run: npx playwright install chromium
+      - if: matrix.browser == 'firefox'
+        run: npx playwright install firefox
+      - if: matrix.browser == 'brave'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'volumebooster-brave.zip'
+          $folder = Join-Path $env:RUNNER_TEMP 'volumebooster-brave'
+          gh release download --repo brave/brave-browser --pattern 'brave-v*-win32-x64.zip' --output $archive
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Expand-Archive -LiteralPath $archive -DestinationPath $folder
+          $binary = Get-ChildItem -LiteralPath $folder -Filter brave.exe -Recurse -File | Select-Object -First 1
+          if (!$binary) { throw 'Brave executable missing from official release archive' }
+          "VOLUMEBOOSTER_BRAVE_BINARY=$($binary.FullName)" >> $env:GITHUB_ENV
+      - if: matrix.browser != 'firefox'
+        run: node tests/browser.mjs --browser=${{ matrix.browser }} --headless
+      - if: matrix.browser == 'firefox'
+        run: npm run test:firefox
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.browser }}
+          path: test-results/${{ matrix.browser }}/

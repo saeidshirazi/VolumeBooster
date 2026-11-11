@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 · November 11, 2026
+
+- Separate native Chrome, Edge, Brave, and Firefox builds.
+- Firefox background, stable add-on identity, minimal permissions, and no-data-collection declaration; no unsupported Chromium API shim.
+- Browser-native shortcut settings, with Firefox's native add-on shortcut manager.
+- Four-browser audio/fullscreen/control tests, including safe Firefox rejection of non-CORS media.
+- Versioned browser ZIPs, unsigned Firefox XPI, complete source, store-assets ZIP, and SHA-256 verification.
+- MIT license, privacy policy, community contribution/security/conduct files, and store-submission listing/reviewer materials.
+- Store icons, screenshot composition from the tested GUI, and promotional image sizes.
+- GitHub's native-browser test matrix and package validation.
+
 ## 0.2.0 · November 11, 2026
 
 - New speaker-and-boost identity with matching SVG and toolbar icons.

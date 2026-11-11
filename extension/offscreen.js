@@ -1,4 +1,5 @@
 import { createAudioGraph, normalizeVolume } from './audio.js';
+const chrome = globalThis.browser || globalThis.chrome;
 
 const sessions = new Map();
 const state = s => s ? { active: true, volume: s.volume, muted: s.muted, protection: s.protection } : { active: false, volume: 100, muted: false, protection: true };
@@ -35,7 +36,7 @@ async function handle(message) {
       const volume = normalizeVolume(message.volume ?? 100);
       const graph = createAudioGraph(context, stream, volume);
       await context.resume();
-      if (context.state !== 'running') throw new Error('Chrome paused the audio engine. Stop and enable again.');
+      if (context.state !== 'running') throw new Error('The browser paused the audio engine. Stop and enable again.');
       const session = { stream, context, graph, volume, muted: false, protection: true };
       sessions.set(tabId, session);
       stream.getTracks().forEach(track => track.addEventListener('ended', () => {

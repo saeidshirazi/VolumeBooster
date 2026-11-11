@@ -1,4 +1,5 @@
 import { normalizeVolume } from './audio.js';
+const chrome = globalThis.browser || globalThis.chrome;
 
 let creating;
 const queues = new Map();
@@ -17,6 +18,7 @@ async function pageState(tabId) {
   try { return await pageAudio('state', tabId); } catch { return null; }
 }
 async function hasEngine() {
+  if (!chrome.offscreen || !chrome.runtime.getContexts) return false;
   return (await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })).length > 0;
 }
 async function ensureEngine() {
@@ -70,6 +72,9 @@ async function handle(message) {
         return local;
       }
     } catch { /* Unsupported/embedded players use explicit tab capture below. */ }
+    if (!chrome.tabCapture?.getMediaStreamId || !chrome.offscreen) {
+      throw new Error('This player cannot be boosted in Firefox. Play a compatible audio/video element first. Protected and non-CORS players are not supported.');
+    }
     await ensureEngine();
     const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
     const s = await audio('start', tabId, { streamId, volume: requestedVolume });
