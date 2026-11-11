@@ -1,5 +1,7 @@
 import { normalizeVolume } from './audio.js';
+import { createSiteSettings } from './site-settings.js';
 const chrome = globalThis.browser || globalThis.chrome;
+const siteSettings = createSiteSettings(chrome);
 
 let creating;
 const queues = new Map();
@@ -52,25 +54,35 @@ async function handle(message) {
   if (type === 'ended') { await badge(tabId, idle); return idle; }
   if (type === 'state') {
     const captured = await hasEngine() ? await audio('state', tabId) : idle;
-    if (captured.active) return { ...captured, mode: 'capture' };
+    if (captured.active) return siteSettings.describe(tabId, { ...captured, mode: 'capture' });
     const local = await pageState(tabId);
     const s = local?.active ? local : idle;
     await badge(tabId, s);
-    return s;
+    return siteSettings.describe(tabId, s);
+  }
+  if (type === 'remember') {
+    const current = await handle({ type: 'state', tabId });
+    if (message.enabled === true) await siteSettings.remember(tabId, current);
+    else if (message.enabled === false) await siteSettings.forget(tabId);
+    else throw new Error('Invalid remember setting.');
+    return siteSettings.describe(tabId, current);
   }
   if (type === 'start') {
     const tab = await chrome.tabs.get(tabId);
     if (!tab.active || !/^https?:\/\//.test(tab.url || '')) throw new Error('Open a regular website tab, then enable VolumeBooster.');
-    const requestedVolume = normalizeVolume(message.volume ?? 100);
+    const saved = await siteSettings.get(tabId);
+    const requestedVolume = normalizeVolume(message.volume ?? saved?.volume ?? 100);
+    const protection = saved?.protection !== false;
     const existing = await handle({ type: 'state', tabId });
     if (existing.active) return existing;
     try {
       await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['page-engine.js'] });
-      const local = await pageAudio('start', tabId);
+      const local = await pageAudio('start', tabId, { volume: requestedVolume, protection });
       if (local?.active) {
         if (message.volume !== undefined) Object.assign(local, await pageAudio('volume', tabId, { volume: requestedVolume }));
         await badge(tabId, local);
-        return local;
+        await siteSettings.persist(tabId, local);
+        return siteSettings.describe(tabId, local);
       }
     } catch { /* Unsupported/embedded players use explicit tab capture below. */ }
     if (!chrome.tabCapture?.getMediaStreamId || !chrome.offscreen) {
@@ -78,15 +90,18 @@ async function handle(message) {
     }
     await ensureEngine();
     const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
-    const s = await audio('start', tabId, { streamId, volume: requestedVolume });
+    let s = await audio('start', tabId, { streamId, volume: requestedVolume });
+    if (!protection) s = await audio('protection', tabId, { enabled: false });
     await badge(tabId, s);
-    return { ...s, mode: 'capture' };
+    await siteSettings.persist(tabId, s);
+    return siteSettings.describe(tabId, { ...s, mode: 'capture' });
   }
   const local = await pageState(tabId);
   if (local?.active) {
     const s = await pageAudio(type, tabId, { volume: message.volume, enabled: message.enabled });
     await badge(tabId, s);
-    return s;
+    await siteSettings.persist(tabId, s);
+    return siteSettings.describe(tabId, s);
   }
   if (!await hasEngine()) {
     if (type === 'stop') { await badge(tabId, idle); return idle; }
@@ -94,10 +109,22 @@ async function handle(message) {
   }
   const s = await audio(type, tabId, { volume: message.volume, enabled: message.enabled });
   await badge(tabId, s);
-  return { ...s, mode: 'capture' };
+  await siteSettings.persist(tabId, s);
+  return siteSettings.describe(tabId, { ...s, mode: 'capture' });
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (sender.id !== chrome.runtime.id || sender.tab || message.target !== 'worker') return;
+  if (sender.id !== chrome.runtime.id || message.target !== 'worker') return;
+  if (sender.tab) {
+    if (message.type !== 'restore' || sender.frameId !== 0) return;
+    serialized(sender.tab.id, async () => {
+      const saved = await siteSettings.forSender(sender);
+      if (!saved) return { active: false };
+      const state = await pageAudio('restore', sender.tab.id, { volume: saved.volume, protection: saved.protection });
+      if (state) await badge(sender.tab.id, state);
+      return state || { active: false };
+    }).then(state => respond({ ok: true, ...state }), error => respond({ ok: false, error: error.message }));
+    return true;
+  }
   serialized(message.tabId, () => handle(message)).then(s => respond({ ok: true, ...s }), e => respond({ ok: false, error: e.message }));
   return true;
 });

@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { mkdir, writeFile, mkdtemp } from 'node:fs/promises';
+import { mkdir, writeFile, mkdtemp, readFile, cp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -21,10 +21,20 @@ await mkdir('test-results', { recursive: true });
 const resultDirectory = path.join('test-results', browserTarget);
 await mkdir(resultDirectory, { recursive: true });
 const profile = await mkdtemp(path.join(tmpdir(), 'volumebooster-test-'));
+const memoryTest = process.argv.includes('--site-memory');
 let context, cleanup = () => {};
 let directServer;
 try {
-  const extension = extensionFolder;
+  let extension = extensionFolder;
+  if (memoryTest) {
+    extension = await mkdtemp(path.join(tmpdir(), 'volumebooster-memory-addon-'));
+    await cp(extensionFolder, extension, { recursive: true });
+    const manifest = JSON.parse(await readFile(path.join(extension, 'manifest.json'), 'utf8'));
+    // Only this isolated test manifest pre-grants the local fixture host. The
+    // shipped manifest requires a user-granted optional site permission.
+    manifest.host_permissions = ['http://127.0.0.1/*'];
+    await writeFile(path.join(extension, 'manifest.json'), JSON.stringify(manifest));
+  }
   ({ context, cleanup } = await launchBrowser(profile, {
     headless: process.env.CI === 'true' || process.argv.includes('--headless'),
     ignoreDefaultArgs: ['--mute-audio'],
@@ -249,6 +259,44 @@ try {
   assert.equal((await send('state')).active, false);
   assert.equal(await page.locator('#media').evaluate(media => media.paused), false);
   check('Direct player Stop preserves original playback');
+  if (memoryTest) {
+    await send('start', { volume: 225 });
+    await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
+    await page.waitForTimeout(600);
+    const memoryPopup = (await cdp.send('Target.getTargets')).targetInfos.find(target => target.url === `chrome-extension://${extensionId}/popup.html`);
+    const { sessionId: memorySession } = await cdp.send('Target.attachToTarget', { targetId: memoryPopup.targetId, flatten: false });
+    await evaluate(`document.getElementById('remember').click()`, memorySession);
+    for (let i = 0; i < 30 && !(await send('state')).remembered; i++) await page.waitForTimeout(100);
+    assert.equal((await send('state')).remembered, true);
+    await send('volume', { volume: 250 });
+    await send('protection', { enabled: false });
+    await closeNativePopups();
+    await page.addInitScript(installMediaProbe);
+    await page.reload();
+    await page.locator('#play').click();
+    await page.waitForFunction(async () => {
+      const state = await window.__volumeBoosterEngine_v1?.({ type: 'state' });
+      return state?.active && state.volume === 250 && state.protection === false;
+    });
+    await page.waitForTimeout(300);
+    const restored = (await page.evaluate(() => window.measureMedia()))[0];
+    assert.ok(restored.gainOutput / restored.input > 2.4 && restored.gainOutput / restored.input < 2.6, JSON.stringify(restored));
+    check('Remembered level and protection restore after reload with measured gain', restored);
+    await send('stop');
+    await page.locator('#media').evaluate(async media => { media.pause(); await media.play(); });
+    await page.waitForTimeout(150);
+    assert.equal((await send('state')).active, false);
+    check('Stop suppresses automatic reactivation in the current document');
+    await send('remember', { enabled: false });
+    assert.equal((await send('state')).remembered, false);
+    await page.reload();
+    await page.locator('#play').click();
+    await page.waitForTimeout(250);
+    assert.equal((await send('state')).active, false);
+    const registered = await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts());
+    assert.equal(registered.filter(script => /^vb-(main|restore)-/.test(script.id)).length, 0);
+    check('Forget removes stored settings and automatic restoration scripts');
+  }
   await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
   let shortcutPopup;
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -334,7 +382,7 @@ try {
   results.push({ name: 'Browser integration', passed: false, error: error.stack });
   process.exitCode = 1;
 } finally {
-  await writeFile(path.join(resultDirectory, 'browser.json'), JSON.stringify({ browser: browserTarget, testedAt: new Date().toISOString(), results }, null, 2));
+  await writeFile(path.join(resultDirectory, 'browser.json'), JSON.stringify({ browser: browserTarget, fixtureHostGrant: memoryTest, testedAt: new Date().toISOString(), results }, null, 2));
   await context?.close();
   cleanup();
   server.close();

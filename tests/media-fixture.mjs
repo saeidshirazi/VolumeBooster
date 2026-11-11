@@ -34,6 +34,14 @@ export function installMediaProbe() {
       window.mediaProbes.push({ context: this, input });
       return source;
     }
+    createGain() {
+      const gain = super.createGain(), output = this.createAnalyser();
+      output.fftSize = 2048;
+      const connect = gain.connect.bind(gain);
+      gain.connect = (destination, ...args) => { const result = connect(destination, ...args); connect(output); return result; };
+      if (window.mediaProbes.length) window.mediaProbes.at(-1).gainOutput = output;
+      return gain;
+    }
     createDynamicsCompressor() {
       const compressor = super.createDynamicsCompressor();
       const output = this.createAnalyser(); output.fftSize = 2048;
@@ -45,6 +53,6 @@ export function installMediaProbe() {
   };
   window.measureMedia = () => window.mediaProbes.map(probe => {
     const rms = node => { const a = new Float32Array(node.fftSize); node.getFloatTimeDomainData(a); return Math.sqrt(a.reduce((sum, sample) => sum + sample * sample, 0) / a.length); };
-    return { input: rms(probe.input), output: rms(probe.output), state: probe.context.state };
+    return { input: rms(probe.input), output: rms(probe.output), gainOutput: probe.gainOutput ? rms(probe.gainOutput) : null, state: probe.context.state };
   });
 }

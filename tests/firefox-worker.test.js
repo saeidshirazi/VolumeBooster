@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { normalizeVolume } from '../extension/audio.js';
+import { createSiteSettings } from '../extension/site-settings.js';
 
 async function setup({ supported = true } = {}) {
   let listener;
@@ -24,8 +25,8 @@ async function setup({ supported = true } = {}) {
       return [{ result: { ...state } }];
     } }
   };
-  const code = (await readFile(new URL('../extension/firefox-background.js', import.meta.url), 'utf8')).replace("import { normalizeVolume } from './audio.js';", '');
-  vm.runInNewContext(code, { browser, normalizeVolume });
+  const code = (await readFile(new URL('../extension/firefox-background.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '');
+  vm.runInNewContext(code, { browser, normalizeVolume, createSiteSettings });
   return { badges, send: (type, tabId = 1, extra = {}, sender = { id: 'firefox-test' }) => listener({ type, tabId, target: 'worker', ...extra }, sender) };
 }
 test('Firefox native worker supports independent sessions without Chromium APIs', async () => {

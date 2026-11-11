@@ -3,7 +3,7 @@
 (() => {
   const key = '__volumeBoosterEngine_v1';
   if (window[key]) return;
-  let context, observer, volume = 100, muted = false, protection = true, active = false;
+  let context, observer, volume = 100, muted = false, protection = true, active = false, autoSuppressed = false;
   const nodes = new Map();
   async function resumeOutput() {
     let timer;
@@ -49,7 +49,9 @@
   function state() { return { active, volume: active ? volume : 100, muted: active && muted, protection: active ? protection : true, mode: 'page' }; }
   window[key] = async message => {
     if (message.type === 'state') return state();
-    if (message.type === 'start') {
+    if (message.type === 'start' || message.type === 'restore') {
+      if (message.type === 'restore' && autoSuppressed) return { ...state(), paused: true };
+      if (message.type === 'start') autoSuppressed = false;
       if (!active) {
         const candidates = [...document.querySelectorAll('video,audio')].filter(eligible);
         if (!candidates.length) return { active: false, unavailable: true };
@@ -59,7 +61,9 @@
           if (!nodes.size) { context.close().catch(() => {}); context = undefined; }
           throw error;
         }
-        active = true; volume = 100; muted = false; protection = true;
+        active = true;
+        volume = typeof message.volume === 'number' && Number.isFinite(message.volume) ? Math.round(Math.min(400, Math.max(0, message.volume))) : 100;
+        muted = false; protection = message.protection !== false;
         attach();
         if (!nodes.size) { active = false; return { active: false, unavailable: true }; }
         nodes.forEach(apply);
@@ -70,6 +74,7 @@
       return state();
     }
     if (message.type === 'stop') {
+      autoSuppressed = true;
       active = false; observer?.disconnect();
       document.removeEventListener('loadedmetadata', attach, true);
       nodes.forEach(apply);

@@ -16,7 +16,8 @@ test('Chromium manifests retain capture and offscreen with no broad host access'
 test('Firefox has a native background, stable identity, and no unsupported permissions', () => {
   const manifest = browserManifest(base, 'firefox');
   assert.deepEqual(manifest.background, { scripts: ['background.js'], type: 'module' });
-  assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);
+  assert.deepEqual(manifest.permissions, ['activeTab', 'scripting', 'storage']);
+  assert.deepEqual(manifest.optional_host_permissions, ['http://*/*', 'https://*/*']);
   assert.deepEqual(manifest.browser_specific_settings.gecko.data_collection_permissions, { required: ['none'] });
   assert.match(manifest.browser_specific_settings.gecko.id, /@/);
   assert.equal(manifest.minimum_chrome_version, undefined);

@@ -1,7 +1,7 @@
 import { Builder, By, until } from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import { firefox as playwrightFirefox } from 'playwright';
-import { mkdir, writeFile, mkdtemp } from 'node:fs/promises';
+import { mkdir, writeFile, mkdtemp, readFile, cp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -14,6 +14,7 @@ await mkdir('test-results/firefox', { recursive: true });
 const addonId = 'volumebooster@saeidshirazi.github.io';
 const uuid = crypto.randomUUID(), base = `moz-extension://${uuid}/`;
 const scratch = await mkdtemp(path.join(tmpdir(), 'volumebooster-firefox-'));
+const memoryTest = process.argv.includes('--site-memory');
 const options = new firefox.Options()
   .setBinary(process.env.VOLUMEBOOSTER_FIREFOX_BINARY || playwrightFirefox.executablePath())
   .addArguments('-headless')
@@ -25,7 +26,14 @@ try {
   driver = await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(service).build();
   await driver.manage().setTimeouts({ script: 15000, pageLoad: 25000 });
   await driver.manage().window().setRect({ width: 1100, height: 850 });
-  await driver.installWebExtension(path.resolve('dist-firefox'), { permanent: false });
+  let addonPath = path.resolve('dist-firefox');
+  if (memoryTest) {
+    addonPath = path.join(scratch, 'addon'); await cp('dist-firefox', addonPath, { recursive: true });
+    const manifest = JSON.parse(await readFile(path.join(addonPath, 'manifest.json'), 'utf8'));
+    manifest.host_permissions = ['http://127.0.0.1/*'];
+    await writeFile(path.join(addonPath, 'manifest.json'), JSON.stringify(manifest));
+  }
+  await driver.installWebExtension(addonPath, { permanent: false });
   pass('Firefox installs the actual MV3 add-on', (await driver.getCapabilities()).get('browserVersion'));
   const click = async selector => (await driver.wait(until.elementLocated(By.css(selector)), 10000)).click();
   await driver.get(url);
@@ -108,6 +116,29 @@ try {
   await driver.switchTo().window(controller);
   assert.equal((await send('state')).active, false);
   pass('Firefox navigation revokes access and leaves no stale boosted session');
+  if (memoryTest) {
+    await driver.switchTo().window(mediaHandle); await click('#play');
+    await driver.switchTo().window(controller);
+    assert.equal((await send('start', { volume: 225 })).active, true);
+    await click('#remember');
+    await driver.wait(async () => (await send('state')).remembered === true, 5000);
+    await send('volume', { volume: 250 }); await send('protection', { enabled: false });
+    await driver.switchTo().window(mediaHandle); await driver.navigate().refresh(); await click('#play');
+    await driver.wait(() => driver.executeScript(async () => {
+      const state = await window.__volumeBoosterEngine_v1?.({ type: 'state' });
+      return state?.active && state.volume === 250 && state.protection === false;
+    }), 10000);
+    pass('Firefox remembers the site level and restores it after reload');
+    await driver.switchTo().window(controller); await send('stop');
+    await driver.switchTo().window(mediaHandle);
+    await driver.executeScript(async () => { const media = document.getElementById('media'); media.pause(); await media.play(); });
+    await driver.switchTo().window(controller); assert.equal((await send('state')).active, false);
+    await send('remember', { enabled: false });
+    await driver.switchTo().window(mediaHandle); await driver.navigate().refresh(); await click('#play');
+    await driver.switchTo().window(controller); assert.equal((await send('state')).active, false);
+    assert.equal((await send('state')).remembered, false);
+    pass('Firefox Stop and Forget prevent unwanted automatic reactivation');
+  }
   await driver.switchTo().window(mediaHandle);
   await driver.get(url + '/unsafe');
   await click('#play');
@@ -153,7 +184,7 @@ try {
   if (driver) await writeFile('test-results/firefox/failure.png', Buffer.from(await driver.takeScreenshot(), 'base64')).catch(() => {});
   process.exitCode = 1;
 } finally {
-  await writeFile('test-results/firefox/report.json', JSON.stringify({ browser: 'Firefox', testedAt: new Date().toISOString(), results }, null, 2));
+  await writeFile('test-results/firefox/report.json', JSON.stringify({ browser: 'Firefox', fixtureHostGrant: memoryTest, testedAt: new Date().toISOString(), results }, null, 2));
   await driver?.quit();
   server.close();
 }

@@ -1,13 +1,14 @@
 import { normalizeVolume } from './audio.js';
 import { browserConfig } from './browser-config.js';
+import { siteIdentity } from './site-settings.js';
 const chrome = globalThis.browser || globalThis.chrome;
 
 const $ = id => document.getElementById(id);
-let tabId, supported = false, state, busy = false, busyLabel = '', queuedVolume, sendingVolume = false;
+let tabId, sitePattern, isPrivate = false, supported = false, state, busy = false, permissionBusy = false, busyLabel = '', queuedVolume, sendingVolume = false;
 
 function render(s) {
   state = s;
-  const disabled = !supported || busy;
+  const disabled = !supported || busy || permissionBusy;
   $('reading').replaceChildren(document.createTextNode(s.volume), Object.assign(document.createElement('span'), { textContent: '%' }));
   $('volume').value = s.volume;
   $('volume').style.background = `linear-gradient(to right,var(--accent) ${s.volume / 4}%,var(--track) ${s.volume / 4}%)`;
@@ -18,6 +19,9 @@ function render(s) {
   $('reset').disabled = disabled || s.volume === 100;
   $('protection').disabled = disabled || !s.active || sendingVolume;
   $('protection').checked = s.protection;
+  $('remember').checked = Boolean(s.remembered);
+  $('remember').disabled = disabled || isPrivate || sendingVolume;
+  $('remember').title = isPrivate ? 'Site preferences are not saved in private windows.' : 'Allow access to this site to restore its level after reload.';
   $('mute').disabled = disabled || !s.active || sendingVolume;
   $('mute').setAttribute('aria-pressed', String(s.muted));
   $('mute-label').textContent = s.muted ? 'Unmute' : 'Mute';
@@ -28,7 +32,7 @@ function render(s) {
   $('dot').classList.toggle('active', s.active && !s.muted);
   $('status').textContent = !supported ? 'Open a regular website to boost audio' : s.active ? (s.muted ? 'Muted · your volume is saved' : s.mode === 'page' ? 'Boosting · native fullscreen supported' : 'Boosting · tab audio mode') : 'Choose a level to start boosting';
   $('mode').textContent = s.active ? (s.mode === 'page' ? 'Native fullscreen supported' : 'Fullscreen limited · try F11') : 'Only this tab. Always local.';
-  $('level').textContent = s.muted ? 'Muted' : s.volume === 100 ? 'Original level' : s.volume === 0 ? 'Silent' : s.volume > 100 ? `${(s.volume / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}× volume` : 'A little quieter';
+  $('level').textContent = !s.active && s.remembered ? 'Saved level · boost is off' : s.muted ? 'Muted' : s.volume === 100 ? 'Original level' : s.volume === 0 ? 'Silent' : s.volume > 100 ? `${(s.volume / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}× volume` : 'A little quieter';
   $('hint').textContent = !supported ? 'Browser pages and extension stores cannot be boosted.' : s.volume > 200 ? 'High boost can distort. Lower the level if audio crackles.' : s.active ? 'Your level stays on when you close this popup.' : 'Choose a preset or move the slider to start.';
   $('hint').classList.toggle('warning', supported && s.volume > 200);
   document.querySelectorAll('[data-volume]').forEach(button => {
@@ -81,6 +85,18 @@ $('reset').addEventListener('click', () => setVolume(100));
 $('decrease').addEventListener('click', () => setVolume(state.volume - 25));
 $('increase').addEventListener('click', () => setVolume(state.volume + 25));
 $('protection').addEventListener('change', () => action('protection', { enabled: $('protection').checked }));
+$('remember').addEventListener('change', async () => {
+  const enabled = $('remember').checked;
+  try {
+    // Call request directly in the checkbox's user gesture, before any await.
+    const approval = enabled ? chrome.permissions.request({ origins: [sitePattern] }) : Promise.resolve(true);
+    permissionBusy = true; render(state);
+    if (!await approval) throw new Error('Site access was not granted. Your volume still works for this tab.');
+    permissionBusy = false;
+    await action('remember', { enabled });
+  } catch (error) { showError(error); }
+  finally { permissionBusy = false; render(state); }
+});
 $('volume').addEventListener('input', event => setVolume(+event.target.value));
 document.querySelectorAll('[data-volume]').forEach(button => button.addEventListener('click', () => setVolume(+button.dataset.volume)));
 $('shortcuts').addEventListener('click', () => {
@@ -91,8 +107,10 @@ $('shortcuts').addEventListener('click', () => {
 try {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   tabId = tab?.id;
+  isPrivate = Boolean(tab?.incognito);
   supported = /^https?:\/\//.test(tab?.url || '');
   const hostname = supported ? new URL(tab.url).hostname.replace(/^www\./, '') : '';
+  sitePattern = supported ? siteIdentity(tab.url).pattern : undefined;
   document.documentElement.dataset.browser = browserConfig.target;
   $('site').textContent = hostname || 'Open a website to get started';
   $('site-icon').textContent = hostname.charAt(0) || '↗';

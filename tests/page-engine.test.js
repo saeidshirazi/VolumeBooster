@@ -67,3 +67,12 @@ test('explicit CORS media can use the native path', async () => {
   const env = await setup({ src: 'https://cdn.example.com/video.mp4', crossOrigin: 'anonymous' });
   assert.equal((await env.send('start')).active, true);
 });
+
+test('automatic restore uses the saved level and respects Stop until explicit re-enable', async () => {
+  const env = await setup();
+  assert.equal((await env.send('restore', { volume: 240, protection: false })).volume, 240);
+  await env.send('stop');
+  assert.equal((await env.send('restore', { volume: 240 })).active, false);
+  assert.equal(env.values.at(-1), 1);
+  assert.equal((await env.send('start', { volume: 180 })).volume, 180);
+});

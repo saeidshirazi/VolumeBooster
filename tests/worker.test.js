@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { normalizeVolume } from '../extension/audio.js';
+import { createSiteSettings } from '../extension/site-settings.js';
 
 async function setup() {
   let listener, commandListener, removedListener, contexts = false, creations = 0, captures = 0;
@@ -26,8 +27,8 @@ async function setup() {
     tabs: { get: async id => ({ id, active: true, url: id === 99 ? 'chrome://settings/' : 'https://example.com/' }), query: async () => [{ id: 1 }], onRemoved: { addListener: fn => { removedListener = fn; } } },
     commands: { onCommand: { addListener: fn => { commandListener = fn; } } }
   };
-  const code = (await readFile(new URL('../extension/background.js', import.meta.url), 'utf8')).replace("import { normalizeVolume } from './audio.js';", '');
-  vm.runInNewContext(code, { chrome, normalizeVolume, console });
+  const code = (await readFile(new URL('../extension/background.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '');
+  vm.runInNewContext(code, { chrome, normalizeVolume, createSiteSettings, console });
   const send = (type, tabId = 1, extra = {}, sender = { id: 'test' }) => new Promise(resolve => {
     const handled = listener({ target: 'worker', type, tabId, ...extra }, sender, resolve);
     if (!handled) resolve(undefined);
