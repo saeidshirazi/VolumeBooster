@@ -14,35 +14,16 @@ export async function resumeAudio(context, timeout = 5000) {
   } finally { clearTimeout(timer); }
 }
 
-export function createAudioGraph(context, stream, volume = 100, protection = true) {
+export async function createAudioGraph(context, stream, volume = 100, protection = true, workletURL) {
+  const output = await globalThis.__volumeBoosterOutputFactory_v1(context, workletURL);
   const source = context.createMediaStreamSource(stream);
-  const gain = context.createGain();
-  const compressor = context.createDynamicsCompressor();
-  // A gentle peak compressor reduces harsh peaks. It is not a brick-wall limiter.
-  compressor.threshold.value = -3;
-  compressor.knee.value = 6;
-  compressor.ratio.value = 12;
-  compressor.attack.value = 0.003;
-  compressor.release.value = 0.15;
-  gain.gain.value = normalizeVolume(volume) / 100;
-  source.connect(gain);
-  let protectedOutput;
-  function setProtection(enabled) {
-    if (protectedOutput === enabled) return;
-    gain.disconnect();
-    compressor.disconnect();
-    if (enabled) { gain.connect(compressor); compressor.connect(context.destination); }
-    else gain.connect(context.destination);
-    protectedOutput = enabled;
-  }
-  setProtection(protection);
+  output.gain.gain.value = normalizeVolume(volume) / 100;
+  source.connect(output.gain); output.setProtection(protection);
   return {
-    setVolume(value, muted = false) {
-      const time = context.currentTime;
-      gain.gain.cancelScheduledValues(time);
-      gain.gain.setTargetAtTime(muted ? 0 : normalizeVolume(value) / 100, time, 0.025);
-    },
-    setProtection,
-    dispose() { source.disconnect(); gain.disconnect(); compressor.disconnect(); }
+    setVolume: (value, muted = false) => output.setVolume(normalizeVolume(value), muted),
+    setProtection: output.setProtection,
+    meter: output.meter,
+    mode: output.mode,
+    dispose() { source.disconnect(); output.dispose(); }
   };
 }

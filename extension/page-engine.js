@@ -3,7 +3,7 @@
 (() => {
   const key = '__volumeBoosterEngine_v1';
   if (window[key]) return;
-  let context, observer, volume = 100, muted = false, protection = true, active = false, autoSuppressed = false;
+  let context, output, observer, volume = 100, muted = false, protection = true, active = false, autoSuppressed = false;
   const nodes = new Map();
   async function resumeOutput() {
     let timer;
@@ -20,35 +20,27 @@
     try { return new URL(media.currentSrc, location.href).origin === location.origin || media.crossOrigin !== null; }
     catch { return false; }
   }
-  function apply(node) {
-    node.gain.gain.cancelScheduledValues(context.currentTime);
-    node.gain.gain.setTargetAtTime(active ? (muted ? 0 : volume / 100) : 1, context.currentTime, 0.025);
-    const soften = active && protection;
-    if (node.soften === soften) return;
-    node.gain.disconnect(); node.compressor.disconnect();
-    if (soften) { node.gain.connect(node.compressor); node.compressor.connect(context.destination); }
-    else node.gain.connect(context.destination);
-    node.soften = soften;
+  function apply() {
+    if (!output) return;
+    output.setVolume(active ? volume : 100, active && muted);
+    output.setProtection(active && protection);
   }
   function attach() {
     for (const media of document.querySelectorAll('video,audio')) {
       if (nodes.has(media) || !eligible(media)) continue;
       try {
         const source = context.createMediaElementSource(media);
-        const gain = context.createGain(), compressor = context.createDynamicsCompressor();
-        compressor.threshold.value = -3; compressor.knee.value = 6; compressor.ratio.value = 12;
-        compressor.attack.value = 0.003; compressor.release.value = 0.15;
-        const node = { source, gain, compressor, soften: undefined };
-        source.connect(gain); nodes.set(media, node); apply(node);
+        source.connect(output.gain); nodes.set(media, source);
       } catch {
         // A player may already belong to the website's own AudioContext.
         // Never replace the player or interrupt its existing audio graph.
       }
     }
   }
-  function state() { return { active, volume: active ? volume : 100, muted: active && muted, protection: active ? protection : true, mode: 'page' }; }
+  function state() { return { active, volume: active ? volume : 100, muted: active && muted, protection: active ? protection : true, mode: 'page', processor: output?.mode }; }
   window[key] = async message => {
     if (message.type === 'state') return state();
+    if (message.type === 'meter') return active && output ? output.meter() : { outputPeak: 0, rms: 0, reductionDb: 0 };
     if (message.type === 'start' || message.type === 'restore') {
       if (message.type === 'restore' && autoSuppressed) return { ...state(), paused: true };
       if (message.type === 'start') autoSuppressed = false;
@@ -61,12 +53,13 @@
           if (!nodes.size) { context.close().catch(() => {}); context = undefined; }
           throw error;
         }
+        output ||= await globalThis.__volumeBoosterOutputFactory_v1(context, message.workletURL);
         active = true;
         volume = typeof message.volume === 'number' && Number.isFinite(message.volume) ? Math.round(Math.min(400, Math.max(0, message.volume))) : 100;
         muted = false; protection = message.protection !== false;
         attach();
         if (!nodes.size) { active = false; return { active: false, unavailable: true }; }
-        nodes.forEach(apply);
+        apply();
         observer ||= new MutationObserver(() => { if (active) attach(); });
         observer.observe(document.documentElement, { childList: true, subtree: true });
         document.addEventListener('loadedmetadata', attach, true);
@@ -77,7 +70,7 @@
       autoSuppressed = true;
       active = false; observer?.disconnect();
       document.removeEventListener('loadedmetadata', attach, true);
-      nodes.forEach(apply);
+      apply();
       // MediaElementSource is a one-time attachment. Keep a unity-gain path
       // alive after Stop so the website remains audible until it unloads.
       return state();
@@ -89,7 +82,7 @@
     } else if (message.type === 'mute') muted = !muted;
     else if (message.type === 'protection') protection = Boolean(message.enabled);
     else throw new Error('Unknown audio command.');
-    nodes.forEach(apply);
+    apply();
     await resumeOutput();
     return state();
   };

@@ -6,6 +6,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { browserTarget, extensionFolder, launchBrowser } from './chromium-target.mjs';
 import { mediaFixture, installMediaProbe } from './media-fixture.mjs';
+import { renderOutputFixture } from './output-fixture.mjs';
 
 const results = [];
 const check = (name, details = '') => { results.push({ name, details, passed: true }); console.log(`PASS ${name}`, details); };
@@ -99,34 +100,7 @@ try {
       await evaluate('window.close()', popupId).catch(() => {});
     }
   }
-  const probeScript = `(() => {
-    window.probes = [];
-    const Original = window.AudioContext;
-    window.AudioContext = class extends Original {
-      createMediaStreamSource(stream) {
-        const source = super.createMediaStreamSource(stream);
-        const input = this.createAnalyser(); input.fftSize = 2048; source.connect(input);
-        window.probes.push({ context: this, input });
-        return source;
-      }
-      createDynamicsCompressor() {
-        const compressor = super.createDynamicsCompressor();
-        const output = this.createAnalyser(); output.fftSize = 2048;
-        const connect = compressor.connect.bind(compressor);
-        compressor.connect = (destination, ...args) => {
-          const result = connect(destination, ...args);
-          if (destination === this.destination) connect(output);
-          return result;
-        };
-        window.probes.at(-1).output = output;
-        return compressor;
-      }
-    };
-    window.measure = () => window.probes.map(p => {
-      const rms = node => { const samples = new Float32Array(node.fftSize); node.getFloatTimeDomainData(samples); return Math.sqrt(samples.reduce((s, v) => s + v*v, 0) / samples.length); };
-      return { state: p.context.state, input: rms(p.input), output: rms(p.output) };
-    });
-  })()`;
+  const probeScript = `(${installMediaProbe.toString()})()`;
   await evaluate(probeScript);
   // Exercise the real worker API while the captured website is still active.
   const send = (type, extra = {}) => evaluate(`chrome.runtime.sendMessage(${JSON.stringify({ target: 'worker', type, tabId, ...extra })})`);
@@ -186,6 +160,10 @@ try {
   await new Promise(resolve => setTimeout(resolve, 300));
   assert.equal((await send('state')).volume, 200);
   check('Rendered popup preset changes real audio session');
+  const liveMeter = await send('meter');
+  assert.ok(Number.isFinite(liveMeter.outputPeak) && liveMeter.outputPeak > 0.001 && liveMeter.outputPeak <= 1, JSON.stringify(liveMeter));
+  assert.ok(['lookahead', 'ceiling'].includes(liveMeter.processor));
+  check('Output meter reports the actual running processor and signal', liveMeter);
   await evaluate(`document.getElementById('increase').click()`, popupSession);
   await new Promise(resolve => setTimeout(resolve, 250));
   assert.equal((await send('state')).volume, 225);
@@ -241,7 +219,13 @@ try {
   assert.equal(directStarted.mode, 'page', JSON.stringify(directStarted));
   await closeNativePopups();
   await page.bringToFront();
-  await page.waitForTimeout(400);
+  // Wait for both analyser windows to fill with this known quiet fixture,
+  // rather than measuring a partly zero-filled startup buffer.
+  await page.waitForFunction(() => {
+    const signal = window.measureMedia()[0];
+    return signal?.input > 0.0104 && signal.output > 0.0104;
+  }, null, { timeout: 10000 });
+  await page.waitForTimeout(60);
   const directBaseline = (await page.evaluate(() => window.measureMedia()))[0];
   assert.ok(directBaseline.input > 0.001 && directBaseline.output > 0.001, JSON.stringify(directBaseline));
   await send('volume', { volume: 200 });
@@ -259,6 +243,16 @@ try {
   assert.equal((await send('state')).active, false);
   assert.equal(await page.locator('#media').evaluate(media => media.paused), false);
   check('Direct player Stop preserves original playback');
+  if (process.argv.includes('--limiter')) {
+    for (const fallback of [false, true]) {
+      const workletURL = `chrome-extension://${extensionId}/limiter-worklet.js`;
+      const rendered = await evaluate(`(${renderOutputFixture.toString()})(${JSON.stringify({ workletURL, fallback })})`);
+      assert.equal(rendered.quiet.processor, fallback ? 'ceiling' : 'lookahead');
+      if (!fallback) { assert.ok(Number.isFinite(rendered.quiet.quietError) && rendered.quiet.quietError < 1e-5, JSON.stringify(rendered.quiet)); assert.ok(Number.isFinite(rendered.loud.stereoError) && rendered.loud.stereoError < 1e-5); }
+      for (const result of [rendered.loud, rendered.mixed]) assert.ok(result.peak <= 0.98001 && result.peak > 0.8, JSON.stringify(result));
+      check(`${fallback ? 'Fallback peak ceiling' : 'Look-ahead limiter'} bounds real browser DSP, including mixed sources`, rendered);
+    }
+  }
   if (memoryTest) {
     await send('start', { volume: 225 });
     await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
@@ -339,7 +333,7 @@ try {
       results.push({ name: 'YouTube fullscreen before enabling capture', passed: baselineFullscreen, externalSite: true });
       console.log('YouTube fullscreen baseline (capture off):', baselineFullscreen);
       if (baselineFullscreen) await page.evaluate(() => document.exitFullscreen());
-      await pageCdp.send('Runtime.evaluate', { expression: probeScript.replaceAll('createMediaStreamSource', 'createMediaElementSource') });
+      await pageCdp.send('Runtime.evaluate', { expression: probeScript });
       await cdp.send('Extensions.triggerAction', { id: extensionId, targetId: pageTarget.targetId });
       await page.waitForTimeout(500);
       const live = await send('start');

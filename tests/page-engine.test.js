@@ -24,6 +24,10 @@ async function setup({ src = 'blob:https://example.com/media', crossOrigin = nul
   const code = await readFile(new URL('../extension/page-engine.js', import.meta.url), 'utf8');
   vm.runInNewContext(code, {
     window, URL, AudioContext, clearTimeout,
+    __volumeBoosterOutputFactory_v1: async context => {
+      const gain = context.createGain();
+      return { gain, mode: 'lookahead', setVolume: (volume, muted) => gain.gain.setTargetAtTime(muted ? 0 : volume / 100), setProtection() {}, meter: () => ({ outputPeak: 0 }) };
+    },
     setTimeout: (callback, delay) => setTimeout(callback, hangResume ? 10 : delay),
     MutationObserver: class { observe() {} disconnect() {} },
     location: { href: 'https://example.com/watch', origin: 'https://example.com' },

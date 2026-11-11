@@ -28,12 +28,15 @@ export function createSiteSettings(api) {
     const { pattern } = siteIdentity(origin);
     const names = await ids(origin);
     const existing = await api.scripting.getRegisteredContentScripts({ ids: names });
-    const present = new Set(existing.map(script => script.id));
+    const present = new Map(existing.map(script => [script.id, script]));
     const scripts = [
-      { id: names[0], js: ['page-engine.js'], world: 'MAIN', runAt: 'document_start' },
+      { id: names[0], js: ['audio-output.js', 'page-engine.js'], world: 'MAIN', runAt: 'document_start' },
       { id: names[1], js: ['restore-bridge.js'], world: 'ISOLATED', runAt: 'document_idle' }
-    ].filter(script => !present.has(script.id)).map(script => ({ ...script, matches: [pattern], allFrames: false, persistAcrossSessions: true }));
-    if (scripts.length) await api.scripting.registerContentScripts(scripts);
+    ].map(script => ({ ...script, matches: [pattern], allFrames: false, persistAcrossSessions: true }));
+    const added = scripts.filter(script => !present.has(script.id));
+    const updated = scripts.filter(script => present.has(script.id) && JSON.stringify(present.get(script.id).js) !== JSON.stringify(script.js));
+    if (updated.length) await api.scripting.updateContentScripts(updated);
+    if (added.length) await api.scripting.registerContentScripts(added);
   }
   async function unregister(origin) {
     const registered = await api.scripting.getRegisteredContentScripts({ ids: await ids(origin) });

@@ -1,4 +1,5 @@
 import { createAudioGraph, normalizeVolume, resumeAudio } from './audio.js';
+import './audio-output.js';
 const chrome = globalThis.browser || globalThis.chrome;
 
 const sessions = new Map();
@@ -16,6 +17,7 @@ async function stop(tabId) {
 async function handle(message) {
   const { type, tabId } = message;
   if (type === 'state') return state(sessions.get(tabId));
+  if (type === 'meter') return sessions.get(tabId)?.graph.meter() || { outputPeak: 0, rms: 0, reductionDb: 0 };
   if (type === 'stop') { await stop(tabId); return state(); }
   if (type === 'start') {
     if (sessions.has(tabId)) return state(sessions.get(tabId));
@@ -34,7 +36,7 @@ async function handle(message) {
       clearTimeout(timer);
       context = new AudioContext({ latencyHint: 'interactive' });
       const volume = normalizeVolume(message.volume ?? 100);
-      const graph = createAudioGraph(context, stream, volume);
+      const graph = await createAudioGraph(context, stream, volume, true, chrome.runtime.getURL('limiter-worklet.js'));
       await resumeAudio(context);
       const session = { stream, context, graph, volume, muted: false, protection: true };
       sessions.set(tabId, session);

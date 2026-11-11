@@ -21,6 +21,7 @@ function fixture({ granted = true, stored = {}, incognito = false } = {}) {
     scripting: {
       getRegisteredContentScripts: async ({ ids } = {}) => [...registrations.values()].filter(script => !ids || ids.includes(script.id)),
       registerContentScripts: async scripts => scripts.forEach(script => { assert.ok(!registrations.has(script.id)); registrations.set(script.id, script); }),
+      updateContentScripts: async scripts => scripts.forEach(script => registrations.set(script.id, script)),
       unregisterContentScripts: async ({ ids }) => ids.forEach(id => registrations.delete(id))
     }
   };
@@ -78,4 +79,14 @@ test('saved sites re-register after background restart and revocation removes st
 test('origin parsing rejects browser pages and omits paths, queries and credentials', () => {
   assert.deepEqual(siteIdentity('https://name:password@example.com:8443/path?q=secret'), { origin: 'https://example.com:8443', pattern: 'https://example.com/*' });
   assert.throws(() => siteIdentity('chrome://settings'));
+});
+
+test('an extension update refreshes registered helper files without losing preferences', async () => {
+  const f = fixture(), settings = createSiteSettings(f.api);
+  await settings.remember(1, { volume: 215, protection: false });
+  const main = [...f.registrations.values()].find(script => script.world === 'MAIN');
+  main.js = ['page-engine.js'];
+  const restarted = createSiteSettings(f.api); await restarted.ready;
+  assert.deepEqual(f.registrations.get(main.id).js, ['audio-output.js', 'page-engine.js']);
+  assert.equal((await restarted.get(1)).volume, 215);
 });

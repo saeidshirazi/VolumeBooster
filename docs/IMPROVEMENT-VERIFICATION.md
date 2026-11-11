@@ -11,3 +11,13 @@ Unit verification includes opt-in defaults, denied permission, private windows, 
 **Verified:** 27 unit tests passed. Chrome, Edge, Brave and Firefox passed the site-memory integration fixtures. Chromium-family tests measured the restored 250% signal, verified Stop suppression and removal of registered scripts; Firefox verified reload restoration, Stop and Forget. Firefox package validation reported zero errors and warnings. Native optional-permission prompt placement remains a manual UI check; the integration fixtures pre-grant only localhost in their test manifest.
 
 Stage 1 is complete. Subsequent stages are recorded below as they are verified.
+
+## 2. Output limiter and meter
+
+Replaced compression-only protection with a shared output graph: a 5 ms, stereo-linked look-ahead sample limiter where worklets are available, and a built-in soft/sample-ceiling fallback. All attached players are mixed before limiting. Added a live processed-output peak meter and gain-reduction indication, without background waveform storage or transmission.
+
+**Verified:** 32 unit tests passed, including limiter transparency, impulses, sample-rate variation, stereo linking and bypass. Chrome, Edge, Brave and Firefox passed real worklet and fallback OfflineAudioContext renders. Quiet worklet samples matched the expected delayed signal with zero measured error; loud and mixed-source output peaks stayed at approximately 0.98000002 (Float32 rounding). Loud renders never went to physical speakers. Live meters, fullscreen, mute, Stop, saved-site restoration and Forget regressions passed across all four browsers. Firefox validation reported zero errors and warnings.
+
+The fallback's heavy saturation can alter sound/stereo balance; it is identified as a peak ceiling rather than advertised as the full linked limiter. The processor is not an intersample/true-peak or physical loudness guarantee. See AUDIO-PROCESSING.md.
+
+Stage 2 is complete.

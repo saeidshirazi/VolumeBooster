@@ -42,10 +42,11 @@
 
     <div class="protection">
       <span class="protection-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 6 14 3-7h3"/></svg></span>
-      <div><strong>Soften loud peaks</strong><small>A smoother listening experience</small></div>
-      <label class="switch"><input id="protection" type="checkbox" checked disabled><span aria-hidden="true"></span><span class="sr-only">Soften loud peaks</span></label>
+      <div><strong>Limit loud peaks</strong><small>Output protection · optional</small></div>
+      <label class="switch"><input id="protection" type="checkbox" checked disabled><span aria-hidden="true"></span><span class="sr-only">Limit loud peaks</span></label>
     </div>
 
+    <div class="meter-row"><meter id="output-meter" min="0" max="1" value="0" aria-label="Audio output sample peak"></meter><span id="meter-label">Output · off</span></div>
     <label class="remember-row"><input id="remember" type="checkbox" disabled><span>Remember this site</span><small>Local · optional</small></label>
     <p class="hint" id="hint">Choose a preset or move the slider to start.</p>
     <p class="error" id="error" role="alert" hidden></p>

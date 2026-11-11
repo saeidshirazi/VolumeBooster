@@ -5,6 +5,22 @@ const chrome = globalThis.browser || globalThis.chrome;
 
 const $ = id => document.getElementById(id);
 let tabId, sitePattern, isPrivate = false, supported = false, state, busy = false, permissionBusy = false, busyLabel = '', queuedVolume, sendingVolume = false;
+let meterTimer, meterPending = false, meterClosed = false;
+async function updateMeter() {
+  if (meterClosed) return;
+  if (!meterPending && state?.active && !document.hidden) {
+    meterPending = true;
+    try {
+      const meter = await send('meter');
+      const peak = Math.max(0, Math.min(1, meter.outputPeak || 0));
+      $('output-meter').value = peak;
+      $('meter-label').textContent = meter.reductionDb > 0.5 && meter.protection ? `Limiting · −${meter.reductionDb.toFixed(1)} dB` : peak > 0.0001 ? `${(20 * Math.log10(peak)).toFixed(0)} dBFS · ${meter.processor === 'ceiling' ? 'peak ceiling' : 'output'}` : 'Output · quiet';
+    } catch { /* Meter failure must not change audio or replace action errors. */ }
+    finally { meterPending = false; }
+  } else if (!state?.active) { $('output-meter').value = 0; $('meter-label').textContent = 'Output · off'; }
+  meterTimer = setTimeout(updateMeter, 150);
+}
+addEventListener('pagehide', () => { meterClosed = true; clearTimeout(meterTimer); });
 
 function render(s) {
   state = s;
@@ -115,6 +131,7 @@ try {
   $('site').textContent = hostname || 'Open a website to get started';
   $('site-icon').textContent = hostname.charAt(0) || '↗';
   render(await send('state'));
+  updateMeter();
 } catch (error) {
   supported = false;
   render({ active: false, volume: 100, muted: false, protection: true });

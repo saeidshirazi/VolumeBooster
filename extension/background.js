@@ -12,7 +12,7 @@ async function pageAudio(type, tabId, extra = {}) {
     func: async message => {
       const engine = window.__volumeBoosterEngine_v1;
       return typeof engine === 'function' ? engine(message) : null;
-    }, args: [{ type, ...extra }]
+    }, args: [{ type, ...extra, ...(['start', 'restore'].includes(type) ? { workletURL: chrome.runtime.getURL('limiter-worklet.js') } : {}) }]
   });
   if (results[0]?.error) throw new Error(results[0].error.message || 'The audio processor could not start.');
   return results[0]?.result;
@@ -60,6 +60,11 @@ async function handle(message) {
     await badge(tabId, s);
     return siteSettings.describe(tabId, s);
   }
+  if (type === 'meter') {
+    const local = await pageState(tabId);
+    if (local?.active) return pageAudio('meter', tabId);
+    return await hasEngine() ? audio('meter', tabId) : { outputPeak: 0, rms: 0, reductionDb: 0 };
+  }
   if (type === 'remember') {
     const current = await handle({ type: 'state', tabId });
     if (message.enabled === true) await siteSettings.remember(tabId, current);
@@ -76,7 +81,7 @@ async function handle(message) {
     const existing = await handle({ type: 'state', tabId });
     if (existing.active) return existing;
     try {
-      await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['page-engine.js'] });
+      await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['audio-output.js', 'page-engine.js'] });
       const local = await pageAudio('start', tabId, { volume: requestedVolume, protection });
       if (local?.active) {
         if (message.volume !== undefined) Object.assign(local, await pageAudio('volume', tabId, { volume: requestedVolume }));

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { mediaFixture, installMediaProbe } from './media-fixture.mjs';
+import { renderOutputFixture } from './output-fixture.mjs';
 
 const { server, url } = await mediaFixture();
 const results = [], errors = [];
@@ -65,7 +66,7 @@ try {
   const started = await send('start', { volume: 100 });
   assert.equal(started.ok, true, JSON.stringify(started));
   assert.equal(started.mode, 'page');
-  pass('Firefox direct audio mode starts without Chromium APIs');
+  pass('Firefox direct audio mode starts without Chromium APIs', { processor: started.processor });
   await driver.switchTo().window(mediaHandle);
   await driver.sleep(400);
   const baseline = await driver.executeScript(() => window.measureMedia()[0]);
@@ -106,6 +107,20 @@ try {
   await click('#reset');
   await driver.wait(async () => (await send('state')).volume === 100, 5000);
   pass('Firefox popup presets, plus and Reset control the real session');
+  const liveMeter = await send('meter');
+  assert.ok(Number.isFinite(liveMeter.outputPeak) && liveMeter.outputPeak > 0.001 && liveMeter.outputPeak <= 1, JSON.stringify(liveMeter));
+  assert.ok(['lookahead', 'ceiling'].includes(liveMeter.processor));
+  pass('Firefox output meter reports the running processor and signal', liveMeter);
+  if (process.argv.includes('--limiter')) {
+    for (const fallback of [false, true]) {
+      const rendered = await driver.executeAsyncScript(`const done = arguments[arguments.length - 1]; import('./audio-output.js').then(() => (${renderOutputFixture.toString()})(arguments[0])).then(done, error => done({ error: error.message }));`, { workletURL: base + 'limiter-worklet.js', fallback });
+      assert.equal(rendered.error, undefined, JSON.stringify(rendered));
+      assert.equal(rendered.quiet.processor, fallback ? 'ceiling' : 'lookahead');
+      if (!fallback) { assert.ok(Number.isFinite(rendered.quiet.quietError) && rendered.quiet.quietError < 1e-5, JSON.stringify(rendered.quiet)); assert.ok(Number.isFinite(rendered.loud.stereoError) && rendered.loud.stereoError < 1e-5); }
+      for (const result of [rendered.loud, rendered.mixed]) assert.ok(result.peak <= 0.98001 && result.peak > 0.8, JSON.stringify(result));
+      pass(`Firefox ${fallback ? 'peak ceiling' : 'look-ahead limiter'} bounds actual offline output without loud speaker playback`, rendered);
+    }
+  }
   await writeFile('test-results/firefox/popup.png', Buffer.from(await driver.takeScreenshot(), 'base64'));
   await send('stop');
   assert.equal((await send('state')).active, false);

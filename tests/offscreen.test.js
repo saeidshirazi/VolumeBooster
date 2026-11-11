@@ -13,12 +13,12 @@ async function setup({ failCapture = false, failResume = false } = {}) {
     async resume() { if (failResume) throw new Error('Device unavailable'); this.state = 'running'; }
     async close() { this.state = 'closed'; closes++; }
   }
-  const code = (await readFile(new URL('../extension/offscreen.js', import.meta.url), 'utf8')).replace("import { createAudioGraph, normalizeVolume, resumeAudio } from './audio.js';", '');
+  const code = (await readFile(new URL('../extension/offscreen.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '');
   vm.runInNewContext(code, {
     AudioContext, normalizeVolume, resumeAudio, setTimeout, clearTimeout,
-    createAudioGraph: () => ({ setVolume() {}, setProtection() {}, dispose() { disposals++; } }),
+    createAudioGraph: async () => ({ setVolume() {}, setProtection() {}, meter: () => ({ outputPeak: 0 }), dispose() { disposals++; } }),
     navigator: { mediaDevices: { getUserMedia: async () => { acquisitions++; if (failCapture) throw new Error('Capture blocked'); return stream; } } },
-    chrome: { runtime: { id: 'test', onMessage: { addListener: fn => { listener = fn; } }, sendMessage: async m => { notices.push(m); } } }
+    chrome: { runtime: { id: 'test', getURL: name => name, onMessage: { addListener: fn => { listener = fn; } }, sendMessage: async m => { notices.push(m); } } }
   });
   const send = (type, extra = {}) => new Promise(resolve => listener({ target: 'audio', tabId: 1, type, ...extra }, { id: 'test' }, resolve));
   return { send, ended: () => ended(), notices, counts: () => ({ acquisitions, trackStops, closes, disposals }) };

@@ -9,7 +9,7 @@ async function page(type, tabId, extra = {}) {
   const results = await api.scripting.executeScript({
     target: { tabId }, world: 'MAIN',
     func: async message => typeof window.__volumeBoosterEngine_v1 === 'function' ? window.__volumeBoosterEngine_v1(message) : null,
-    args: [{ type, ...extra }]
+    args: [{ type, ...extra, ...(['start', 'restore'].includes(type) ? { workletURL: api.runtime.getURL('limiter-worklet.js') } : {}) }]
   });
   if (results[0]?.error) throw new Error(results[0].error.message || 'The audio processor could not start.');
   return results[0]?.result;
@@ -33,6 +33,10 @@ async function handle(message) {
     await badge(tabId, result);
     return siteSettings.describe(tabId, result);
   }
+  if (type === 'meter') {
+    const current = await page('state', tabId).catch(() => null);
+    return current?.active ? page('meter', tabId) : { outputPeak: 0, rms: 0, reductionDb: 0 };
+  }
   if (type === 'remember') {
     const current = await handle({ type: 'state', tabId });
     if (message.enabled === true) await siteSettings.remember(tabId, current);
@@ -45,7 +49,7 @@ async function handle(message) {
     const volume = normalizeVolume(message.volume ?? saved?.volume ?? 100);
     const tab = await api.tabs.get(tabId);
     if (!tab.active || !/^https?:\/\//.test(tab.url || '')) throw new Error('Open a regular website tab first.');
-    await api.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['page-engine.js'] });
+    await api.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['audio-output.js', 'page-engine.js'] });
     const state = await page('start', tabId, { volume, protection: saved?.protection !== false });
     if (!state?.active) throw new Error('This player cannot be boosted in Firefox. Play a compatible audio/video element first. Protected and non-CORS players are not supported.');
     const result = await page('volume', tabId, { volume });
